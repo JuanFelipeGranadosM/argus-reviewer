@@ -100,3 +100,20 @@ que no entiende, no inventa una función.
 - **Anotaciones de Python** (aviso, un diagnóstico por archivo): solo funciones públicas no anidadas, sin
   `self`/`cls`, sin las pruebas `test*` y sin exigir retorno a `__init__`. La stdlib de CPython no sirve de
   referencia de falsos positivos para esta regla: no se anota por diseño (los tipos están en typeshed).
+
+## D14 — Modo incremental: `argus diff` lista solo lo que el cambio introduce o empeora
+Auditar el proyecto entero en cada turno devuelve al agente cientos de problemas que no causó y hace crecer
+el informe con el repositorio. `argus diff [ruta] [--base REV]` analiza solo los archivos distintos desde el
+ancestro común de `REV` (por defecto `HEAD`) y `HEAD`: el árbol de trabajo, el índice y los archivos nuevos
+sin seguimiento que no ignora `.gitignore`. Con `--base main` cubre todos los commits de la rama.
+- **Base**: cada archivo cambiado se analiza también en su versión base (`git cat-file --batch`, un solo
+  proceso para todos), con la misma ruta y configuración. Las líneas tocadas salen de `git diff -U0 -M`.
+- **Emparejamiento**: por regla y mensaje con los números sustituidos (las líneas se desplazan); las reglas
+  de un diagnóstico por archivo (BLOAT-001, SOUP-001, TYPE-002, TYPE-003) solo por regla.
+- **Nuevo o empeorado**: un diagnóstico fuera de las líneas tocadas siempre es previo. Uno tocado es nuevo
+  salvo que tenga pareja en la base con una métrica (líneas, parámetros, complejidad, usos) igual o mayor:
+  alargar una función que ya era larga se informa; tocarla sin empeorarla, no.
+- **Resumen**: `summary.incremental` (`base`, `base_commit`, `files_changed`, `preexisting_issues`). Los
+  previos se cuentan pero no se listan. Fuera de un repositorio git es un fallo de la herramienta (código 2).
+- **Coste**: en GO-Asset, 83 archivos cambiados frente a `HEAD` dan 39 diagnósticos (21 KB) en lugar de los
+  del proyecto entero, en 0,75 s con el binario de depuración (225 ms de ellos son de git).

@@ -17,19 +17,26 @@ Fase 1 en curso. Lo que funciona hoy:
   JS/TS, primera capa del parser (D13).
 - `argus scan` con reglas de presupuestos, tipado y seguridad para Python y JS/TS. Los archivos minificados o generados (media de
   más de 300 bytes por línea) se omiten y se cuentan en `files_generated`.
+- `argus diff`, modo incremental: solo los problemas que introduce o empeora el cambio frente a git (D14).
 
 ## Uso
 
 ```sh
 cargo build
 argus scan [ruta] [--format human|agent] [--config ruta/.argus.toml]
+argus diff [ruta] [--base HEAD|main|<rev>] [--format human|agent] [--config ruta/.argus.toml]
 ```
+
+`argus diff` audita solo los archivos que cambiaron desde el ancestro común de `--base` y `HEAD` (árbol de
+trabajo, índice y archivos nuevos no ignorados) y lista los problemas que el cambio introduce o empeora: una
+función que ya era larga solo aparece si se alarga. Los que ya existían se cuentan en
+`summary.incremental.preexisting_issues`. Requiere `git` en el `PATH`.
 
 | Código de salida | Significado |
 |---|---|
 | 0 | Sin errores bloqueantes (puede haber avisos) |
 | 1 | Hay errores bloqueantes |
-| 2 | Fallo de la herramienta: ruta inexistente, configuración inválida, ... |
+| 2 | Fallo de la herramienta: ruta inexistente, configuración inválida, `diff` fuera de un repositorio git, ... |
 
 La configuración se lee de `<ruta>/.argus.toml` si existe (esquema en la sección 5.2 de la especificación).
 `node_modules`, `venv`, `dist`, `build`, `__pycache__`, `target` y las entradas ocultas se excluyen siempre;
@@ -83,7 +90,12 @@ con instrucciones de remediación para que el agente corrija en un solo turno:
 
 Este JSON es un contrato: los campos solo se añaden, nunca se renombran ni cambian de tipo. Las rutas son
 relativas a la raíz analizada y usan `/`. El servidor MCP (`argus mcp`) llegará en la Fase 6; mientras tanto, el
-harness puede ejecutar `argus scan --format agent` y entregar la salida al agente.
+harness puede ejecutar `argus diff --format agent` al final de cada turno del agente (o `--base main` antes
+de abrir un PR) y entregarle la salida. En modo incremental el resumen añade:
+
+```json
+"incremental": { "base": "HEAD", "base_commit": "0fbec54…", "files_changed": 3, "preexisting_issues": 5 }
+```
 
 ## Desarrollo
 

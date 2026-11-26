@@ -50,7 +50,8 @@ fn explicit_any(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
         "Sustituir cada `any` por el tipo concreto, por `unknown` con una validación o por un genérico.",
     )
     .with_lines(lines);
-    out.push(EXPLICIT_ANY.diagnostic(ctx.file, (first, last), message, Some(action)));
+    let diagnostic = EXPLICIT_ANY.diagnostic(ctx.file, (first, last), message, Some(action));
+    out.push(diagnostic.with_metric(u32::try_from(uses).unwrap_or(u32::MAX)));
 }
 
 fn missing_annotations(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
@@ -96,7 +97,9 @@ fn missing_annotations(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
         "Anotar todos los parámetros y el tipo de retorno de las funciones indicadas (`-> None` si no devuelven nada).",
     )
     .with_lines(lines);
-    out.push(MISSING_ANNOTATIONS.diagnostic(ctx.file, (first, last), message, Some(action)));
+    let diagnostic =
+        MISSING_ANNOTATIONS.diagnostic(ctx.file, (first, last), message, Some(action));
+    out.push(diagnostic.with_metric(u32::try_from(count).unwrap_or(u32::MAX)));
 }
 
 /// Frontera pública: sin `_` inicial (los dunder sí cuentan) y sin las pruebas `test*`, que no

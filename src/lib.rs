@@ -3,6 +3,7 @@
 
 pub mod arena;
 pub mod config;
+pub mod git;
 pub mod lexer;
 pub mod reporters;
 pub mod rules;

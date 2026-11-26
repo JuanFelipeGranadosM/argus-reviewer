@@ -60,6 +60,17 @@ pub(super) fn display_path(root: &Path, path: &Path) -> String {
         .join("/")
 }
 
+/// Si una ruta relativa (con `/`) quedaría fuera del recorrido de [`collect`]: algún componente oculto
+/// o excluido.
+pub(super) fn excluded_path(relative: &str, excludes: &[String]) -> bool {
+    let parts: Vec<&str> = relative.split('/').collect();
+    (1..=parts.len()).any(|n| {
+        let prefix = parts.get(..n).unwrap_or_default();
+        let name = prefix.last().copied().unwrap_or_default();
+        name.starts_with('.') || is_excluded(&prefix.join("/"), name, excludes)
+    })
+}
+
 /// Patrones: `nombre` (cualquier componente), `*.sufijo` (nombre de archivo) o `ruta/relativa`.
 fn is_excluded(relative: &str, name: &str, excludes: &[String]) -> bool {
     excludes.iter().any(|pattern| {

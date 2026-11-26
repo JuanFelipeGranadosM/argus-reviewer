@@ -29,6 +29,14 @@ pub fn render(report: &Report, color: bool) -> String {
         write_diagnostic(&mut out, diagnostic, &palette);
     }
     let summary = &report.summary;
+    if let Some(diff) = &summary.incremental {
+        let commit = diff.base_commit.get(..10).unwrap_or(&diff.base_commit);
+        let _ = writeln!(
+            out,
+            "Cambios frente a {} ({commit}): {} archivos · {} problemas previos sin listar",
+            diff.base, diff.files_changed, diff.preexisting_issues
+        );
+    }
     let _ = write!(out, "{} archivos analizados", summary.files_scanned);
     if summary.files_generated > 0 {
         let _ = write!(out, ", {} generados omitidos", summary.files_generated);
@@ -86,6 +94,7 @@ mod tests {
                 line_end: 5,
                 message: "mensaje".into(),
                 agent_action: Some(AgentAction::new("fix", "arreglar")),
+                metric: 0,
             }],
         };
         report.finalize();

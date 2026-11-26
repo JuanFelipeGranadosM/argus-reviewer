@@ -51,6 +51,7 @@ impl Rule {
             line_end,
             message,
             agent_action,
+            metric: 0,
         }
     }
 }

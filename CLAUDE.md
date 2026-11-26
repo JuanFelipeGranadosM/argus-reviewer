@@ -51,12 +51,14 @@ Roadmap de 6 fases de la especificación, con los ajustes de `docs/decisiones.md
 Fase actual: **Fase 1 (Base, ProjectArena, CST y Lexer/Parser con pruebas de round-trip)**.
 No avances a la Fase 2 hasta cumplir su criterio de aceptación.
 
-Hecho: lexers de Python y JS/TS (D11), esqueleto estructural (D13) y `argus scan` con reglas de presupuestos,
-tipado y seguridad. Pendiente en la Fase 1: CST red-green y parsers de Python y JS/TS con recuperación de
+Hecho: lexers de Python y JS/TS (D11), esqueleto estructural (D13), `argus scan` con reglas de presupuestos,
+tipado y seguridad, y `argus diff` incremental frente a git (D14). Pendiente en la Fase 1: CST red-green y parsers de Python y JS/TS con recuperación de
 errores, que sustituirán al esqueleto por dentro sin cambiar las reglas.
 
 ## Contrato de `argus scan`
 - El JSON de `--format agent` (`src/reporters/mod.rs`) es público: solo se añaden campos. Los IDs de regla
   (`ARGUS-<ÁREA>-<NNN>`) nunca se reutilizan. La salida debe ser determinista (lo cubre `tests/scan_tests.rs`).
+- `argus diff` empareja con la base por `Diagnostic::metric` (`src/scan/baseline.rs`): una regla nueva que
+  mida una magnitud debe fijarla con `.with_metric(..)` para que empeorar un problema previo se informe.
 - Antes de dar por buena una regla nueva, pásala por la stdlib de CPython (`argus scan <Lib> --format agent`) y
   revisa los falsos positivos: es código escrito por personas y no debería marcarse en masa (ver D9).

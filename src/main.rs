@@ -6,7 +6,7 @@ use argus_reviewer::arena::Language;
 use argus_reviewer::config::Config;
 use argus_reviewer::lexer::lex_file;
 use argus_reviewer::reporters::{agent, human};
-use argus_reviewer::scan::scan;
+use argus_reviewer::scan::{diff, scan};
 use clap::{Parser, Subcommand, ValueEnum};
 
 /// Código de salida: 0 sin errores bloqueantes, 1 con errores bloqueantes, 2 fallo de la herramienta.
@@ -36,6 +36,19 @@ enum Command {
         #[arg(long)]
         config: Option<PathBuf>,
     },
+    /// Audita solo lo que cambió desde `--base` (por defecto `HEAD`: lo pendiente de commit) y lista
+    /// solo los problemas nuevos o empeorados. Sale con código 1 si alguno es bloqueante.
+    Diff {
+        #[arg(default_value = ".")]
+        path: PathBuf,
+        /// Revisión de referencia; se compara con su ancestro común con `HEAD` (p. ej. `main`).
+        #[arg(long, default_value = "HEAD")]
+        base: String,
+        #[arg(long, value_enum, default_value_t = Format::Human)]
+        format: Format,
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
     /// Vuelca los tokens de un archivo (herramienta de desarrollo de los lexers).
     #[command(hide = true)]
     Tokens { path: PathBuf },
@@ -54,7 +67,13 @@ fn main() -> ExitCode {
             path,
             format,
             config,
-        } => run_scan(&path, format, config.as_deref()),
+        } => run_scan(&path, format, config.as_deref(), None),
+        Command::Diff {
+            path,
+            base,
+            format,
+            config,
+        } => run_scan(&path, format, config.as_deref(), Some(&base)),
         Command::Tokens { path } => dump_tokens(&path),
     }
 }
@@ -64,12 +83,17 @@ fn tool_failure(message: impl std::fmt::Display) -> ExitCode {
     ExitCode::from(EXIT_TOOL_FAILURE)
 }
 
-fn run_scan(path: &Path, format: Format, config: Option<&Path>) -> ExitCode {
+/// `base` es `None` para `scan` (todo el proyecto) y la revisión de referencia para `diff`.
+fn run_scan(path: &Path, format: Format, config: Option<&Path>, base: Option<&str>) -> ExitCode {
     let config = match Config::discover(path, config) {
         Ok(config) => config,
         Err(err) => return tool_failure(err),
     };
-    let report = match scan(path, &config) {
+    let result = match base {
+        Some(base) => diff(path, &config, base),
+        None => scan(path, &config),
+    };
+    let report = match result {
         Ok(report) => report,
         Err(err) => return tool_failure(err),
     };
