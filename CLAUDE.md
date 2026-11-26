@@ -51,8 +51,9 @@ Roadmap de 6 fases de la especificación, con los ajustes de `docs/decisiones.md
 Fase actual: **Fase 1 (Base, ProjectArena, CST y Lexer/Parser con pruebas de round-trip)**.
 No avances a la Fase 2 hasta cumplir su criterio de aceptación.
 
-Hecho: lexers de Python y JS/TS (D11) y `argus scan` con reglas de tokens (D3). Pendiente en la Fase 1: CST
-red-green y parsers de Python y JS/TS con recuperación de errores.
+Hecho: lexers de Python y JS/TS (D11), esqueleto estructural (D13) y `argus scan` con reglas de presupuestos,
+tipado y seguridad. Pendiente en la Fase 1: CST red-green y parsers de Python y JS/TS con recuperación de
+errores, que sustituirán al esqueleto por dentro sin cambiar las reglas.
 
 ## Contrato de `argus scan`
 - El JSON de `--format agent` (`src/reporters/mod.rs`) es público: solo se añaden campos. Los IDs de regla

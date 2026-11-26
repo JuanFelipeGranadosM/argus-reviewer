@@ -91,11 +91,12 @@ fn scan_reports_each_rule_once_per_file() {
             ("long.py", "ARGUS-BLOAT-001", 1),
             ("pkg/broken.py", "ARGUS-SYNTAX-001", 1),
             ("soup.py", "ARGUS-SOUP-001", 1),
+            ("soup.py", "ARGUS-TYPE-003", 4),
             ("web/view.tsx", "ARGUS-TYPE-001", 1),
         ]
     );
     assert_eq!(report.summary.blocking_issues, 2);
-    assert_eq!(report.summary.warnings, 4);
+    assert_eq!(report.summary.warnings, 5);
     let soup = report
         .diagnostics
         .iter()

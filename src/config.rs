@@ -1,5 +1,6 @@
-//! Lectura de `.argus.toml`. Las secciones que aún no tienen reglas (`clones`, `typing`, `security`,
-//! `refactor`) se aceptan y se ignoran; dentro de `general` y `budgets` una clave desconocida es un error.
+//! Lectura de `.argus.toml`. Las secciones que aún no tienen reglas (`clones`, `refactor`) se aceptan
+//! y se ignoran; dentro de las demás una clave desconocida es un error. En `typing` y `security` se
+//! aceptan todas las claves de la especificación aunque alguna aún no tenga regla.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -27,6 +28,8 @@ pub enum ConfigError {
 pub struct Config {
     pub general: General,
     pub budgets: Budgets,
+    pub typing: Typing,
+    pub security: Security,
 }
 
 /// Siempre excluidos, se configure lo que se configure: analizar dependencias o artefactos de build
@@ -91,6 +94,46 @@ impl Default for Budgets {
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Typing {
+    pub require_python_param_types: bool,
+    pub require_python_return_types: bool,
+    pub forbid_ts_explicit_any: bool,
+    pub check_unawaited_async: bool,
+    pub infer_structural_shapes: bool,
+}
+
+impl Default for Typing {
+    fn default() -> Self {
+        Self {
+            require_python_param_types: true,
+            require_python_return_types: true,
+            forbid_ts_explicit_any: true,
+            check_unawaited_async: true,
+            infer_structural_shapes: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Security {
+    pub forbid_empty_catch: bool,
+    pub forbid_interpolated_sql: bool,
+    pub forbid_dynamic_eval: bool,
+}
+
+impl Default for Security {
+    fn default() -> Self {
+        Self {
+            forbid_empty_catch: true,
+            forbid_interpolated_sql: true,
+            forbid_dynamic_eval: true,
+        }
+    }
+}
+
 impl Config {
     pub fn parse(text: &str, path: &Path) -> Result<Self, ConfigError> {
         toml::from_str(text).map_err(|source| ConfigError::Invalid {
@@ -143,6 +186,20 @@ mod tests {
     fn spec_example_sections_are_accepted() {
         let text = "[clones]\nenabled = true\n[typing]\nforbid_ts_explicit_any = true\n";
         assert!(Config::parse(text, Path::new("t")).is_ok());
+    }
+
+    #[test]
+    fn typing_and_security_switches_are_read() {
+        let text = "[typing]
+forbid_ts_explicit_any = false
+[security]
+forbid_dynamic_eval = false
+";
+        let config = Config::parse(text, Path::new("t")).unwrap();
+        assert!(!config.typing.forbid_ts_explicit_any);
+        assert!(config.typing.require_python_param_types);
+        assert!(!config.security.forbid_dynamic_eval);
+        assert!(config.security.forbid_empty_catch);
     }
 
     #[test]
