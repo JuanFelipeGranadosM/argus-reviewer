@@ -1,0 +1,125 @@
+/// Tipo de token o nodo, compartido por todos los lenguajes soportados.
+///
+/// Es un enum sin datos para que el CST (red-green) pueda almacenarlo como un `u16`.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[repr(u16)]
+pub enum SyntaxKind {
+    Whitespace,
+    Newline,
+    Comment,
+    LineContinuation,
+
+    LogicalNewline,
+    Indent,
+    Dedent,
+    EndOfFile,
+    Error,
+
+    Ident,
+    Int,
+    Float,
+    Imaginary,
+    String,
+    FString,
+
+    LParen,
+    RParen,
+    LBracket,
+    RBracket,
+    LBrace,
+    RBrace,
+    Colon,
+    Comma,
+    Semicolon,
+    Dot,
+    Ellipsis,
+    Arrow,
+    At,
+    Eq,
+    ColonEq,
+    Bang,
+
+    Plus,
+    Minus,
+    Star,
+    DoubleStar,
+    Slash,
+    DoubleSlash,
+    Percent,
+    Pipe,
+    Amp,
+    Caret,
+    Tilde,
+    LShift,
+    RShift,
+    Lt,
+    Gt,
+    LtEq,
+    GtEq,
+    EqEq,
+    NotEq,
+
+    PlusEq,
+    MinusEq,
+    StarEq,
+    DoubleStarEq,
+    SlashEq,
+    DoubleSlashEq,
+    PercentEq,
+    AtEq,
+    AmpEq,
+    PipeEq,
+    CaretEq,
+    LShiftEq,
+    RShiftEq,
+
+    KwFalse,
+    KwNone,
+    KwTrue,
+    KwAnd,
+    KwAs,
+    KwAssert,
+    KwAsync,
+    KwAwait,
+    KwBreak,
+    KwClass,
+    KwContinue,
+    KwDef,
+    KwDel,
+    KwElif,
+    KwElse,
+    KwExcept,
+    KwFinally,
+    KwFor,
+    KwFrom,
+    KwGlobal,
+    KwIf,
+    KwImport,
+    KwIn,
+    KwIs,
+    KwLambda,
+    KwNonlocal,
+    KwNot,
+    KwOr,
+    KwPass,
+    KwRaise,
+    KwReturn,
+    KwTry,
+    KwWhile,
+    KwWith,
+    KwYield,
+}
+
+impl SyntaxKind {
+    /// Tokens que el parser salta y el CST adjunta como trivia del token significativo siguiente.
+    pub const fn is_trivia(self) -> bool {
+        matches!(
+            self,
+            Self::Whitespace | Self::Newline | Self::Comment | Self::LineContinuation
+        )
+    }
+
+    pub const fn is_keyword(self) -> bool {
+        (self as u16) >= (Self::KwFalse as u16) && (self as u16) <= (Self::KwYield as u16)
+    }
+}

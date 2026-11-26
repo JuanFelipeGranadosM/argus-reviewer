@@ -1,0 +1,29 @@
+[package]
+name = "argus-reviewer"
+version = "0.1.0"
+edition = "2021"
+description = "Motor determinista de auditoría estática y refactorización de código Python y JS/TS generado por agentes"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "argus"
+path = "src/main.rs"
+
+[lib]
+name = "argus_reviewer"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "suggestions"] }
+thiserror = "2.0"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+too_many_lines = "deny"

@@ -1,0 +1,2 @@
+tests/fixtures/** -text
+*.rs text eol=lf
