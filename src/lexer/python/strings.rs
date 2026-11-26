@@ -39,7 +39,11 @@ struct Flavor {
 pub(super) fn lex_string(cur: &mut Cursor, errors: &mut Vec<LexError>) -> SyntaxKind {
     let start = cur.offset();
     let plen = prefix_len(cur.rest()).unwrap_or(0);
-    let prefix = cur.rest().get(..plen).unwrap_or_default().to_ascii_lowercase();
+    let prefix = cur
+        .rest()
+        .get(..plen)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
     (0..plen).for_each(|_| {
         cur.bump();
     });
@@ -123,7 +127,8 @@ fn escape(cur: &mut Cursor, flavor: Flavor) {
     }
 }
 
-/// Consume el contenido de `{...}` tras la llave de apertura, incluidas cadenas anidadas.
+/// Consume el contenido de `{...}` tras la llave de apertura: expresión con cadenas anidadas y
+/// comentarios `#` (PEP 701), y luego el formato opcional tras el `:` de nivel superior.
 fn replacement_field(cur: &mut Cursor, errors: &mut Vec<LexError>) {
     let mut depth = 0u32;
     while let Some(c) = cur.first() {
@@ -132,6 +137,12 @@ fn replacement_field(cur: &mut Cursor, errors: &mut Vec<LexError>) {
                 cur.bump();
                 return;
             }
+            ':' if depth == 0 => {
+                cur.bump();
+                format_spec(cur, errors);
+                return;
+            }
+            '#' => cur.eat_while(|c| c != '\n' && c != '\r'),
             '{' | '(' | '[' => {
                 depth = depth.saturating_add(1);
                 cur.bump();
@@ -146,6 +157,18 @@ fn replacement_field(cur: &mut Cursor, errors: &mut Vec<LexError>) {
             _ => {
                 cur.bump();
             }
+        }
+    }
+}
+
+/// El formato (`>10`, `#x`, `'^8`) es texto literal: ni `#` ni las comillas tienen significado,
+/// salvo los campos anidados como `{x:{ancho}}`.
+fn format_spec(cur: &mut Cursor, errors: &mut Vec<LexError>) {
+    while let Some(c) = cur.bump() {
+        match c {
+            '}' => return,
+            '{' => replacement_field(cur, errors),
+            _ => {}
         }
     }
 }

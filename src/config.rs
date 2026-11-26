@@ -31,7 +31,14 @@ pub struct Config {
 
 /// Siempre excluidos, se configure lo que se configure: analizar dependencias o artefactos de build
 /// solo produce ruido. Las entradas ocultas (`.git`, `.venv`, ...) también se omiten siempre.
-pub const BUILTIN_EXCLUDES: &[&str] = &["node_modules", "venv", "dist", "build", "__pycache__", "target"];
+pub const BUILTIN_EXCLUDES: &[&str] = &[
+    "node_modules",
+    "venv",
+    "dist",
+    "build",
+    "__pycache__",
+    "target",
+];
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]

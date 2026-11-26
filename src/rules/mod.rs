@@ -101,7 +101,10 @@ impl<'a> FileContext<'a> {
     pub fn code_lines(&self) -> u32 {
         let mut seen = vec![false; self.lines.line_count() as usize + 2];
         for token in &self.lexed.tokens {
-            if token.kind.is_trivia() || token.range.is_empty() || token.kind == SyntaxKind::LogicalNewline {
+            if token.kind.is_trivia()
+                || token.range.is_empty()
+                || token.kind == SyntaxKind::LogicalNewline
+            {
                 continue;
             }
             let first = self.lines.line(token.range.start);

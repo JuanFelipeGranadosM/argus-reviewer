@@ -76,9 +76,18 @@ mod tests {
 
     #[test]
     fn language_detection_by_extension() {
-        assert_eq!(Language::from_path(Path::new("a/b.py")), Some(Language::Python));
-        assert_eq!(Language::from_path(Path::new("x.tsx")), Some(Language::TypeScript));
-        assert_eq!(Language::from_path(Path::new("x.jsx")), Some(Language::JavaScript));
+        assert_eq!(
+            Language::from_path(Path::new("a/b.py")),
+            Some(Language::Python)
+        );
+        assert_eq!(
+            Language::from_path(Path::new("x.tsx")),
+            Some(Language::TypeScript)
+        );
+        assert_eq!(
+            Language::from_path(Path::new("x.jsx")),
+            Some(Language::JavaScript)
+        );
         assert_eq!(Language::from_path(Path::new("README.md")), None);
     }
 
@@ -92,6 +101,9 @@ mod tests {
         };
         assert_eq!(arena.add_file(record("a.py")), Ok(FileId(0)));
         assert_eq!(arena.add_file(record("b.py")), Ok(FileId(1)));
-        assert_eq!(arena.file(FileId(1)).map(|f| f.path.as_path()), Some(Path::new("b.py")));
+        assert_eq!(
+            arena.file(FileId(1)).map(|f| f.path.as_path()),
+            Some(Path::new("b.py"))
+        );
     }
 }

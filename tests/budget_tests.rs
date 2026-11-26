@@ -20,7 +20,10 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 #[test]
 fn no_source_file_exceeds_line_budget() {
     let mut files = Vec::new();
-    rust_files(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src"), &mut files);
+    rust_files(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
+        &mut files,
+    );
     assert!(!files.is_empty());
     let over: Vec<String> = files
         .iter()
@@ -29,5 +32,8 @@ fn no_source_file_exceeds_line_budget() {
             (lines > MAX_FILE_LINES).then(|| format!("{} ({lines} líneas)", path.display()))
         })
         .collect();
-    assert!(over.is_empty(), "archivos sobre {MAX_FILE_LINES} líneas: {over:?}");
+    assert!(
+        over.is_empty(),
+        "archivos sobre {MAX_FILE_LINES} líneas: {over:?}"
+    );
 }

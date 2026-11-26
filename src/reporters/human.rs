@@ -45,14 +45,21 @@ fn write_diagnostic(out: &mut String, diagnostic: &Diagnostic, palette: &Palette
     let head = format!("{label}[{}]", diagnostic.id);
     let _ = writeln!(out, "{} {}", palette.paint(code, &head), diagnostic.rule);
     let location = if diagnostic.line_end > diagnostic.line_start {
-        format!("{}:{}-{}", diagnostic.file, diagnostic.line_start, diagnostic.line_end)
+        format!(
+            "{}:{}-{}",
+            diagnostic.file, diagnostic.line_start, diagnostic.line_end
+        )
     } else {
         format!("{}:{}", diagnostic.file, diagnostic.line_start)
     };
     let _ = writeln!(out, "  {} {location}", palette.paint(CYAN, "-->"));
     let _ = writeln!(out, "  {}", diagnostic.message);
     if let Some(action) = &diagnostic.agent_action {
-        let _ = writeln!(out, "  {}", palette.paint(DIM, &format!("= {}", action.instruction)));
+        let _ = writeln!(
+            out,
+            "  {}",
+            palette.paint(DIM, &format!("= {}", action.instruction))
+        );
     }
     out.push('\n');
 }

@@ -18,7 +18,13 @@ const PY_DIRECTIVES: &[&str] = &[
     "nosec", "yapf:", "black:",
 ];
 
-const LICENSE_WORDS: &[&str] = &["copyright", "license", "licence", "all rights reserved", "(c)"];
+const LICENSE_WORDS: &[&str] = &[
+    "copyright",
+    "license",
+    "licence",
+    "all rights reserved",
+    "(c)",
+];
 
 const MARKERS: &[&str] = &["TODO", "FIXME", "HACK", "XXX", "NOTE"];
 
@@ -74,30 +80,67 @@ mod tests {
             "# pylint: disable=too-many-locals",
             "# fmt: off",
         ] {
-            assert_eq!(classify_python(text, false), CommentKind::Directive, "{text}");
+            assert_eq!(
+                classify_python(text, false),
+                CommentKind::Directive,
+                "{text}"
+            );
         }
-        assert_eq!(classify_python("# -*- coding: utf-8 -*-", true), CommentKind::Directive);
+        assert_eq!(
+            classify_python("# -*- coding: utf-8 -*-", true),
+            CommentKind::Directive
+        );
     }
 
     #[test]
     fn license_only_in_header_unless_spdx() {
-        assert_eq!(classify_python("# Copyright 2026 Acme", true), CommentKind::License);
-        assert_eq!(classify_python("# Copyright 2026 Acme", false), CommentKind::Narrative);
-        assert_eq!(classify_python("# SPDX-License-Identifier: MIT", false), CommentKind::License);
+        assert_eq!(
+            classify_python("# Copyright 2026 Acme", true),
+            CommentKind::License
+        );
+        assert_eq!(
+            classify_python("# Copyright 2026 Acme", false),
+            CommentKind::Narrative
+        );
+        assert_eq!(
+            classify_python("# SPDX-License-Identifier: MIT", false),
+            CommentKind::License
+        );
     }
 
     #[test]
     fn markers_need_uppercase_word() {
-        assert_eq!(classify_python("# TODO: paginar", false), CommentKind::Marker);
-        assert_eq!(classify_python("# FIXME(juan) roto", false), CommentKind::Marker);
-        assert_eq!(classify_python("# note that this is slow", false), CommentKind::Narrative);
-        assert_eq!(classify_python("# TODOS los usuarios", false), CommentKind::Narrative);
+        assert_eq!(
+            classify_python("# TODO: paginar", false),
+            CommentKind::Marker
+        );
+        assert_eq!(
+            classify_python("# FIXME(juan) roto", false),
+            CommentKind::Marker
+        );
+        assert_eq!(
+            classify_python("# note that this is slow", false),
+            CommentKind::Narrative
+        );
+        assert_eq!(
+            classify_python("# TODOS los usuarios", false),
+            CommentKind::Narrative
+        );
     }
 
     #[test]
     fn llm_soup_is_narrative() {
-        assert_eq!(classify_python("# Validar usuario", false), CommentKind::Narrative);
-        assert_eq!(classify_python("# Return the result", false), CommentKind::Narrative);
-        assert_eq!(classify_python("#: Tasa de IVA vigente", false), CommentKind::Doc);
+        assert_eq!(
+            classify_python("# Validar usuario", false),
+            CommentKind::Narrative
+        );
+        assert_eq!(
+            classify_python("# Return the result", false),
+            CommentKind::Narrative
+        );
+        assert_eq!(
+            classify_python("#: Tasa de IVA vigente", false),
+            CommentKind::Doc
+        );
     }
 }

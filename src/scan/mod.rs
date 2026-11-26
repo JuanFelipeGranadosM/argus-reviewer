@@ -40,7 +40,9 @@ pub fn scan(root: &Path, config: &Config) -> Result<Report, ScanError> {
         }
         report.summary.files_scanned += 1;
         let display = walk::display_path(root, &path);
-        report.diagnostics.extend(analyze_python(&path, &display, config));
+        report
+            .diagnostics
+            .extend(analyze_python(&path, &display, config));
     }
     report.finalize();
     Ok(report)
@@ -52,7 +54,11 @@ fn language_enabled(config: &Config, language: Language) -> bool {
         Language::JavaScript => "javascript",
         Language::TypeScript => "typescript",
     };
-    config.general.languages.iter().any(|l| l.eq_ignore_ascii_case(name))
+    config
+        .general
+        .languages
+        .iter()
+        .any(|l| l.eq_ignore_ascii_case(name))
 }
 
 fn analyze_python(path: &Path, display: &str, config: &Config) -> Vec<Diagnostic> {

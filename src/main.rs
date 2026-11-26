@@ -13,7 +13,11 @@ const EXIT_BLOCKING: u8 = 1;
 const EXIT_TOOL_FAILURE: u8 = 2;
 
 #[derive(Parser)]
-#[command(name = "argus", version, about = "Auditoría estática determinista para código generado por agentes")]
+#[command(
+    name = "argus",
+    version,
+    about = "Auditoría estática determinista para código generado por agentes"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -97,10 +101,19 @@ fn dump_tokens(path: &Path) -> ExitCode {
     };
     for token in &lexed.tokens {
         let range = token.range;
-        println!("{}..{} {:?} {:?}", range.start, range.end, token.kind, token.text(&source));
+        println!(
+            "{}..{} {:?} {:?}",
+            range.start,
+            range.end,
+            token.kind,
+            token.text(&source)
+        );
     }
     for error in &lexed.errors {
-        eprintln!("{}..{} error: {}", error.range.start, error.range.end, error.kind);
+        eprintln!(
+            "{}..{} error: {}",
+            error.range.start, error.range.end, error.kind
+        );
     }
     if lexed.errors.is_empty() {
         ExitCode::SUCCESS
