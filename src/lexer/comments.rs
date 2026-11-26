@@ -93,7 +93,9 @@ pub fn classify_js(text: &str, in_header: bool) -> CommentKind {
     if JS_DIRECTIVES.iter().any(|d| lower.starts_with(d)) {
         return CommentKind::Directive;
     }
-    if lower.starts_with("@license") || lower.starts_with("@preserve") || is_license(&lower, in_header)
+    if lower.starts_with("@license")
+        || lower.starts_with("@preserve")
+        || is_license(&lower, in_header)
     {
         return CommentKind::License;
     }
@@ -225,10 +227,19 @@ mod tests {
     #[test]
     fn js_comments_are_classified() {
         let cases = [
-            ("// @ts-expect-error: tipos de la lib", CommentKind::Directive),
-            ("// eslint-disable-next-line no-console", CommentKind::Directive),
+            (
+                "// @ts-expect-error: tipos de la lib",
+                CommentKind::Directive,
+            ),
+            (
+                "// eslint-disable-next-line no-console",
+                CommentKind::Directive,
+            ),
             ("/* webpackChunkName: \"vista\" */", CommentKind::Directive),
-            ("/// <reference types=\"vite/client\" />", CommentKind::Directive),
+            (
+                "/// <reference types=\"vite/client\" />",
+                CommentKind::Directive,
+            ),
             ("#!/usr/bin/env node", CommentKind::Directive),
             ("/*! lib v1 | MIT */", CommentKind::License),
             ("/** Calcula el subtotal. */", CommentKind::Doc),

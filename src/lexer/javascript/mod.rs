@@ -25,7 +25,10 @@ pub struct Dialect {
 impl Dialect {
     /// `.ts`, `.mts` y `.cts` no admiten JSX (`<T>x` es una aserción de tipo); el resto sí.
     pub fn from_path(path: &Path) -> Self {
-        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or_default();
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or_default();
         Self {
             jsx: !matches!(ext, "ts" | "mts" | "cts"),
         }
@@ -47,7 +50,10 @@ enum Ctx {
     TemplateExpr,
     /// `{` dentro de JSX: su `}` vuelve a la etiqueta o a los hijos.
     JsxExpr,
-    JsxTag { closing: bool, self_closing: bool },
+    JsxTag {
+        closing: bool,
+        self_closing: bool,
+    },
     JsxChildren,
 }
 
@@ -222,7 +228,9 @@ impl<'a> JsLexer<'a> {
     fn ident(&mut self, start: u32) -> SyntaxKind {
         loop {
             match self.cur.first() {
-                Some('\\') if self.cur.second() == Some('u') => literals::unicode_escape(&mut self.cur),
+                Some('\\') if self.cur.second() == Some('u') => {
+                    literals::unicode_escape(&mut self.cur)
+                }
                 Some(c) if is_ident_continue(c) => {
                     self.cur.bump();
                 }
@@ -260,8 +268,8 @@ impl<'a> JsLexer<'a> {
         if last == SyntaxKind::RParen && self.after_condition {
             return true;
         }
-        let property = last.is_keyword()
-            && matches!(before, Some(SyntaxKind::Dot | SyntaxKind::QuestionDot));
+        let property =
+            last.is_keyword() && matches!(before, Some(SyntaxKind::Dot | SyntaxKind::QuestionDot));
         let non_null = last == SyntaxKind::Bang && before.is_some_and(punct::ends_expression);
         !property && !non_null && !punct::ends_expression(last)
     }
