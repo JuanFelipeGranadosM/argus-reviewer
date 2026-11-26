@@ -5,8 +5,9 @@ mod bloat;
 mod comments;
 mod typing_gaps;
 
+use crate::arena::Language;
 use crate::config::Budgets;
-use crate::lexer::comments::{classify_python, CommentKind};
+use crate::lexer::comments::{classify_js, classify_python, CommentKind};
 use crate::lexer::Lexed;
 use crate::reporters::{AgentAction, Diagnostic, Severity};
 use crate::syntax::{LineIndex, SyntaxKind, TextRange};
@@ -62,14 +63,25 @@ pub struct ClassifiedComment<'a> {
 pub struct FileContext<'a> {
     pub file: &'a str,
     pub lexed: &'a Lexed,
+    pub language: Language,
     pub lines: LineIndex,
     pub comments: Vec<ClassifiedComment<'a>>,
     pub budgets: &'a Budgets,
 }
 
 impl<'a> FileContext<'a> {
-    pub fn python(file: &'a str, source: &'a str, lexed: &'a Lexed, budgets: &'a Budgets) -> Self {
+    pub fn new(
+        file: &'a str,
+        source: &'a str,
+        lexed: &'a Lexed,
+        language: Language,
+        budgets: &'a Budgets,
+    ) -> Self {
         let lines = LineIndex::new(source);
+        let classify = match language {
+            Language::Python => classify_python,
+            Language::JavaScript | Language::TypeScript => classify_js,
+        };
         let mut comments = Vec::new();
         let mut in_header = true;
         for token in &lexed.tokens {
@@ -81,7 +93,7 @@ impl<'a> FileContext<'a> {
                 comments.push(ClassifiedComment {
                     text,
                     line,
-                    kind: classify_python(text, in_header),
+                    kind: classify(text, in_header),
                     own_line: before.trim().is_empty(),
                 });
             } else if !token.kind.is_trivia() {
@@ -91,6 +103,7 @@ impl<'a> FileContext<'a> {
         Self {
             file,
             lexed,
+            language,
             lines,
             comments,
             budgets,
@@ -119,7 +132,7 @@ impl<'a> FileContext<'a> {
     }
 }
 
-pub fn check_python(ctx: &FileContext) -> Vec<Diagnostic> {
+pub fn check(ctx: &FileContext) -> Vec<Diagnostic> {
     let mut out = syntax_errors(ctx);
     bloat::check(ctx, &mut out);
     comments::check(ctx, &mut out);

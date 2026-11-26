@@ -4,11 +4,11 @@
 //! distingue el fin de sentencia (`LogicalNewline`) de los saltos de línea que son trivia: líneas en
 //! blanco, líneas solo con comentario y saltos dentro de paréntesis, corchetes o llaves.
 
-mod numbers;
 mod punct;
 mod strings;
 
 use super::cursor::Cursor;
+use super::numbers::scan_number;
 use super::{check_size, LexError, LexErrorKind, Lexed, SourceError};
 use crate::syntax::{SyntaxKind, TextRange, Token};
 
@@ -143,10 +143,8 @@ impl<'a> PyLexer<'a> {
             _ if strings::prefix_len(self.cur.rest()).is_some() => {
                 strings::lex_string(&mut self.cur, &mut self.out.errors)
             }
-            '0'..='9' => numbers::lex_number(&mut self.cur),
-            '.' if self.cur.second().is_some_and(|d| d.is_ascii_digit()) => {
-                numbers::lex_number(&mut self.cur)
-            }
+            '0'..='9' => self.number(),
+            '.' if self.cur.second().is_some_and(|d| d.is_ascii_digit()) => self.number(),
             _ if punct::is_ident_start(c) => self.ident(start),
             _ => self.operator(start),
         };
@@ -173,6 +171,14 @@ impl<'a> PyLexer<'a> {
         }
         self.error(LexErrorKind::StrayBackslash, start);
         SyntaxKind::Error
+    }
+
+    fn number(&mut self) -> SyntaxKind {
+        let kind = scan_number(&mut self.cur);
+        if self.cur.eat('j') || self.cur.eat('J') {
+            return SyntaxKind::Imaginary;
+        }
+        kind
     }
 
     fn ident(&mut self, start: u32) -> SyntaxKind {

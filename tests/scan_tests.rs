@@ -24,11 +24,18 @@ def procesar(payload):
     return resultado
 ";
 
+/// JSX con apóstrofo en el texto y `/` dentro de una expresión: no debe dar errores de sintaxis.
+const VIEW_TSX: &str = "\
+// @ts-ignore
+const vista = () => <p className=\"nota\">Don't panic: {total / 2} items</p>;
+";
+
 fn project(name: &str) -> PathBuf {
     let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
     let _ = fs::remove_dir_all(&root);
     let long: String = (0..450).map(|i| format!("x{i} = {i}\n")).collect();
-    let files: [(&str, &str); 8] = [
+    let minified: String = (0..900).map(|i| format!("var a{i}=1;")).collect();
+    let files: [(&str, &str); 10] = [
         ("soup.py", SOUP),
         ("long.py", &long),
         (
@@ -41,6 +48,8 @@ fn project(name: &str) -> PathBuf {
         ),
         ("pkg/broken.py", "s = 'sin cerrar\nok = 1\n"),
         ("web/app.ts", "export const a = 1;\n"),
+        ("web/view.tsx", VIEW_TSX),
+        ("web/assets/index-Cx1.js", &minified),
         (
             "node_modules/dep/index.py",
             "# x\n# x\n# x\n# x\n# x\n# x\n",
@@ -66,8 +75,9 @@ fn argus(args: &[&str]) -> Output {
 fn scan_reports_each_rule_once_per_file() {
     let root = project("scan_rules");
     let report = scan(&root, &Config::default()).unwrap();
-    assert_eq!(report.summary.files_scanned, 5);
-    assert_eq!(report.summary.files_unsupported, 1);
+    assert_eq!(report.summary.files_scanned, 7);
+    assert_eq!(report.summary.files_unsupported, 0);
+    assert_eq!(report.summary.files_generated, 1);
     let found: Vec<(&str, &str, u32)> = report
         .diagnostics
         .iter()
@@ -81,10 +91,11 @@ fn scan_reports_each_rule_once_per_file() {
             ("long.py", "ARGUS-BLOAT-001", 1),
             ("pkg/broken.py", "ARGUS-SYNTAX-001", 1),
             ("soup.py", "ARGUS-SOUP-001", 1),
+            ("web/view.tsx", "ARGUS-TYPE-001", 1),
         ]
     );
     assert_eq!(report.summary.blocking_issues, 2);
-    assert_eq!(report.summary.warnings, 3);
+    assert_eq!(report.summary.warnings, 4);
     let soup = report
         .diagnostics
         .iter()
@@ -118,7 +129,7 @@ fn agent_format_follows_contract_and_exits_one_on_blocking_issues() {
         String::from_utf8_lossy(&output.stderr)
     );
     let json: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(json["summary"]["files_scanned"], 5);
+    assert_eq!(json["summary"]["files_scanned"], 7);
     assert_eq!(json["summary"]["blocking_issues"], 2);
     let first = &json["diagnostics"][0];
     for key in [
@@ -175,5 +186,5 @@ fn project_config_is_discovered() {
     .unwrap();
     let report = scan(&root, &Config::discover(&root, None).unwrap()).unwrap();
     assert_eq!(report.summary.blocking_issues, 0);
-    assert_eq!(report.summary.files_scanned, 4);
+    assert_eq!(report.summary.files_scanned, 6);
 }

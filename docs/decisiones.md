@@ -54,3 +54,28 @@ Sin tablas Unicode (`unicode-ident` no está entre las dependencias permitidas),
 identificador cualquier carácter no ASCII que no sea espacio. El código Python válido nunca da error (marcas
 combinantes, selectores de variante, `℘`, letras matemáticas). A cambio, un identificador inválido como `€` no
 se detecta en el lexer: argus no es un compilador y prioriza no dar falsos positivos sobre código válido.
+
+## D11 — Lexer JS/TS con heurísticas de contexto, sin parser
+Sin gramática no se sabe si `/` abre una regex ni si `<` abre JSX. Se decide por el token significativo
+anterior, como los escáneres clásicos de JS:
+- `/` abre una regex salvo tras algo que cierra una expresión (identificador, literal, `)`, `]`, `}`, `++`,
+  `this`, ...). Excepciones: una palabra reservada tras `.` es un nombre de propiedad (`x.default / 2`); la `)`
+  de `if`/`while`/`for`/`with` abre una sentencia (`if (x) /re/.test(y)`); un `!` tras una expresión es la
+  aserción no nula de TypeScript (`alto! / 12`); `yield` y `await` van seguidos de una expresión.
+- `<` abre JSX solo donde cabe una expresión y fuera de `.ts`/`.mts`/`.cts`. En `.tsx` se reconocen las listas
+  de parámetros de tipo (`<T,>`, `<T extends U>`, `<T = V>`) para no confundirlas con etiquetas.
+- Los `>` se emiten sueltos: en `Array<Array<T>>` cada uno cierra un nivel de genéricos, y el parser recompone
+  `>>`, `>=` o `>>>=` cuando no hay trivia entre ellos.
+- Las plantillas se emiten por tramos (`TemplateHead`/`Middle`/`Tail`) y el código de sus `${...}` se lexea
+  como código normal, con una pila de contextos que también gobierna las llaves de JSX.
+
+Queda ambigua la `}` de bloque seguida de `/` (`}\n/re/.test(x)`): se trata como división, que es lo habitual
+tras un objeto literal. Validado con `scripts/oracle_typescript.mjs` (comentarios, regex, plantillas y JsxText
+contra el parser de TypeScript) sobre GO-Asset y su `node_modules`: 24.119 archivos con 0 discrepancias, y
+round-trip sin errores sobre 49.100 archivos (624 MB, incluidos los worktrees).
+
+## D12 — Los archivos minificados o generados no se auditan
+Un bundle copiado a `assets/` (p. ej. por Capacitor) no lo escribió una persona ni un agente; marcarlo como
+`file-too-long` es ruido. Si un archivo de 4 KiB o más tiene una media de más de 300 bytes por línea (el código
+escrito a mano ronda los 30-40), se omite y se cuenta en `summary.files_generated`. En la stdlib de CPython solo
+omite dos tablas generadas de `site-packages`.

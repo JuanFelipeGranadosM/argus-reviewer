@@ -69,4 +69,10 @@ impl<'a> Cursor<'a> {
     pub(crate) fn eat_newline(&mut self) -> bool {
         self.eat_str("\r\n") || self.eat('\n') || self.eat('\r')
     }
+
+    /// Avanza `bytes` bytes, o hasta el final. `bytes` debe venir de una búsqueda en `rest()` para
+    /// caer en un límite de carácter.
+    pub(crate) fn advance(&mut self, bytes: usize) {
+        self.pos = self.pos.saturating_add(bytes).min(self.src.len());
+    }
 }

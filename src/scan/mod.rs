@@ -7,9 +7,19 @@ use std::path::{Path, PathBuf};
 
 use crate::arena::Language;
 use crate::config::Config;
-use crate::lexer::python;
+use crate::lexer::lex_file;
 use crate::reporters::{Diagnostic, Report};
 use crate::rules::{self, FileContext, UNREADABLE_FILE};
+
+/// Media de bytes por línea por encima de la cual un archivo se trata como minificado o generado
+/// (bundles copiados a `assets/`, `*.min.js`): el código escrito a mano ronda los 30-40.
+const GENERATED_BYTES_PER_LINE: usize = 300;
+const GENERATED_MIN_BYTES: usize = 4096;
+
+enum Outcome {
+    Analyzed(Vec<Diagnostic>),
+    Generated,
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ScanError {
@@ -34,15 +44,14 @@ pub fn scan(root: &Path, config: &Config) -> Result<Report, ScanError> {
         if !language_enabled(config, language) {
             continue;
         }
-        if language != Language::Python {
-            report.summary.files_unsupported += 1;
-            continue;
-        }
-        report.summary.files_scanned += 1;
         let display = walk::display_path(root, &path);
-        report
-            .diagnostics
-            .extend(analyze_python(&path, &display, config));
+        match analyze(&path, &display, language, config) {
+            Outcome::Analyzed(diagnostics) => {
+                report.summary.files_scanned += 1;
+                report.diagnostics.extend(diagnostics);
+            }
+            Outcome::Generated => report.summary.files_generated += 1,
+        }
     }
     report.finalize();
     Ok(report)
@@ -61,17 +70,25 @@ fn language_enabled(config: &Config, language: Language) -> bool {
         .any(|l| l.eq_ignore_ascii_case(name))
 }
 
-fn analyze_python(path: &Path, display: &str, config: &Config) -> Vec<Diagnostic> {
+fn analyze(path: &Path, display: &str, language: Language, config: &Config) -> Outcome {
     let source = match fs::read_to_string(path) {
         Ok(source) => source,
-        Err(err) => return vec![unreadable(display, &err.to_string())],
+        Err(err) => return Outcome::Analyzed(vec![unreadable(display, &err.to_string())]),
     };
-    let lexed = match python::lex(&source) {
+    if looks_generated(&source) {
+        return Outcome::Generated;
+    }
+    let lexed = match lex_file(&source, language, path) {
         Ok(lexed) => lexed,
-        Err(err) => return vec![unreadable(display, &err.to_string())],
+        Err(err) => return Outcome::Analyzed(vec![unreadable(display, &err.to_string())]),
     };
-    let ctx = FileContext::python(display, &source, &lexed, &config.budgets);
-    rules::check_python(&ctx)
+    let ctx = FileContext::new(display, &source, &lexed, language, &config.budgets);
+    Outcome::Analyzed(rules::check(&ctx))
+}
+
+fn looks_generated(source: &str) -> bool {
+    let lines = source.lines().count().max(1);
+    source.len() >= GENERATED_MIN_BYTES && source.len() / lines > GENERATED_BYTES_PER_LINE
 }
 
 fn unreadable(display: &str, reason: &str) -> Diagnostic {

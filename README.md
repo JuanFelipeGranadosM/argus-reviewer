@@ -11,8 +11,10 @@ Especificación: [`docs/Argus-Reviewer-Arquitectura-y-Plan-Agente.docx`](docs/Ar
 Fase 1 en curso. Lo que funciona hoy:
 
 - Lexer de Python sin pérdida, validado con round-trip byte a byte y contra `tokenize` de CPython sobre la stdlib.
-- `argus scan` con reglas basadas en tokens, solo para Python. Los archivos JS/TS se cuentan en
-  `files_unsupported`.
+- Lexer de JavaScript/TypeScript/JSX sin pérdida, validado con round-trip y contra el parser de TypeScript
+  (comentarios, regex, plantillas y texto JSX) sobre un monorepo real y su `node_modules`.
+- `argus scan` con reglas basadas en tokens para Python y JS/TS. Los archivos minificados o generados (media de
+  más de 300 bytes por línea) se omiten y se cuentan en `files_generated`.
 
 ## Uso
 
@@ -38,7 +40,7 @@ La configuración se lee de `<ruta>/.argus.toml` si existe (esquema en la secci�
 | `ARGUS-SYNTAX-001` | `syntax-error` | error | Error léxico (cadena sin cerrar, desindentación inconsistente, ...) |
 | `ARGUS-BLOAT-001` | `file-too-long` | error | Archivo por encima de `budgets.max_file_lines` |
 | `ARGUS-SOUP-001` | `comment-soup` | aviso | Exceso de comentarios narrativos cortos y aislados frente a `budgets.max_comment_to_code_ratio` |
-| `ARGUS-TYPE-001` | `bare-suppression` | aviso | `# type: ignore`, `# pyright: ignore` o `# noqa` sin código concreto |
+| `ARGUS-TYPE-001` | `bare-suppression` | aviso | Python: `# type: ignore`, `# pyright: ignore` o `# noqa` sin código. JS/TS: `@ts-ignore`, `@ts-nocheck` y `eslint-disable` sin regla |
 | `ARGUS-IO-001` | `unreadable-file` | aviso | Archivo que no es UTF-8 o supera 4 GiB |
 
 Los IDs son estables: una regla publicada nunca cambia de ID.
@@ -50,7 +52,7 @@ con instrucciones de remediación para que el agente corrija en un solo turno:
 
 ```json
 {
-  "summary": { "files_scanned": 5, "files_unsupported": 1, "blocking_issues": 2, "warnings": 3 },
+  "summary": { "files_scanned": 7, "files_unsupported": 0, "files_generated": 1, "blocking_issues": 2, "warnings": 4 },
   "diagnostics": [
     {
       "id": "ARGUS-TYPE-001",
@@ -80,5 +82,10 @@ harness puede ejecutar `argus scan --format agent` y entregar la salida al agent
 cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
-CI (GitHub Actions) ejecuta lo mismo en Linux y Windows, y repite el round-trip y el oráculo contra la stdlib
-de CPython.
+CI (GitHub Actions) ejecuta lo mismo en Linux y Windows, y repite el round-trip y los oráculos contra la stdlib
+de CPython y contra un corpus de paquetes npm fijados:
+
+```sh
+ARGUS_JS_ROUNDTRIP_DIR=<carpeta> cargo test --test js_lexer_tests -- --ignored --nocapture
+node scripts/oracle_typescript.mjs <node_modules/typescript/lib/typescript.js> target/debug/argus <carpeta>
+```
