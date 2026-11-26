@@ -36,3 +36,15 @@ como `Marker`. `argus clean` nunca los borra: son deuda registrada, no ruido.
 ## D7 — Toolchain GNU en Windows
 La máquina de desarrollo no tiene MSVC Build Tools; se usa `x86_64-pc-windows-gnu`. Ninguna decisión del
 código puede depender del target.
+
+## D8 — Las exclusiones del usuario se suman a las básicas
+`node_modules`, `venv`, `dist`, `build`, `__pycache__`, `target` y las entradas ocultas se excluyen siempre.
+`[general].exclude` añade patrones en lugar de reemplazar la lista. Si se reemplazara, un `.argus.toml` con
+`exclude = ["pkg"]` haría que se analizara `node_modules`, y en un harness eso es una trampa silenciosa.
+
+## D9 — `comment-soup` mide comentarios cortos y aislados, no todos los narrativos
+Contar todos los comentarios narrativos marcaba el 10 % de la stdlib de CPython (347 archivos), escrita por
+personas. Solo cuentan los comentarios narrativos de 6 palabras o menos que no forman bloque con la línea
+anterior o la siguiente, ya sean comentarios en línea propia (explicaciones del porqué) o al final de línea
+(anotaciones de tablas). Con eso, la stdlib baja a 6 archivos, todos tablas generadas. La sopa ligera (ratio
+bajo 0,25) no se marca: decidir qué comentario sobra es tarea de `argus clean` (Fase 5).

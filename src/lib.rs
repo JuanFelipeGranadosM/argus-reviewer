@@ -2,5 +2,9 @@
 //! JavaScript/TypeScript generado por agentes.
 
 pub mod arena;
+pub mod config;
 pub mod lexer;
+pub mod reporters;
+pub mod rules;
+pub mod scan;
 pub mod syntax;
