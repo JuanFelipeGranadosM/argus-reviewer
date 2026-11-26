@@ -81,10 +81,7 @@ fn is_explicit_any(sig: &Sig, i: usize) -> bool {
     if !sig.is_word(i, "any") || after_dot(sig, i) {
         return false;
     }
-    let type_follows = matches!(
-        sig.kind(i + 1),
-        Some(Gt | RBracket | LBracket | Pipe | Amp)
-    );
+    let type_follows = matches!(sig.kind(i + 1), Some(Gt | RBracket | LBracket | Pipe | Amp));
     match sig.prev(i) {
         Some(Colon | Lt | Pipe | Amp | FatArrow | Eq) => true,
         Some(Comma) => type_follows,

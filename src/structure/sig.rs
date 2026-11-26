@@ -75,7 +75,10 @@ impl<'a> Sig<'a> {
         let Some(token) = self.tokens.get(i) else {
             return "";
         };
-        let rest = self.source.get(token.range.end as usize..).unwrap_or_default();
+        let rest = self
+            .source
+            .get(token.range.end as usize..)
+            .unwrap_or_default();
         rest.split(['\n', '\r']).next().unwrap_or_default()
     }
 

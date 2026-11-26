@@ -96,7 +96,12 @@ fn length(
     out.push(FUNCTION_TOO_LONG.diagnostic(ctx.file, lines, message, Some(action)));
 }
 
-fn parameters(ctx: &FileContext, function: &Function, lines: (u32, u32), out: &mut Vec<Diagnostic>) {
+fn parameters(
+    ctx: &FileContext,
+    function: &Function,
+    lines: (u32, u32),
+    out: &mut Vec<Diagnostic>,
+) {
     let max = ctx.budgets.max_parameters;
     let count = u32::try_from(function.params.len()).unwrap_or(u32::MAX);
     if count <= max {
@@ -113,7 +118,12 @@ fn parameters(ctx: &FileContext, function: &Function, lines: (u32, u32), out: &m
     out.push(TOO_MANY_PARAMETERS.diagnostic(ctx.file, header, message, Some(action)));
 }
 
-fn complexity(ctx: &FileContext, function: &Function, lines: (u32, u32), out: &mut Vec<Diagnostic>) {
+fn complexity(
+    ctx: &FileContext,
+    function: &Function,
+    lines: (u32, u32),
+    out: &mut Vec<Diagnostic>,
+) {
     let max = ctx.budgets.max_cyclomatic_complexity;
     let value = function.complexity;
     if value <= max {

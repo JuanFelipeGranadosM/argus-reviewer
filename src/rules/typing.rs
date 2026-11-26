@@ -64,8 +64,8 @@ fn missing_annotations(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
         if function.nested || !is_public(name) {
             continue;
         }
-        let params = typing.require_python_param_types
-            && function.params.iter().any(|p| !p.annotated);
+        let params =
+            typing.require_python_param_types && function.params.iter().any(|p| !p.annotated);
         let returns =
             typing.require_python_return_types && !function.has_return_type && name != "__init__";
         if params || returns {
@@ -77,7 +77,11 @@ fn missing_annotations(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
         return;
     };
     let count = names.len();
-    let mut cited = names.into_iter().take(NAMES_IN_MESSAGE).collect::<Vec<_>>().join(", ");
+    let mut cited = names
+        .into_iter()
+        .take(NAMES_IN_MESSAGE)
+        .collect::<Vec<_>>()
+        .join(", ");
     if count > NAMES_IN_MESSAGE {
         cited.push_str(", …");
     }

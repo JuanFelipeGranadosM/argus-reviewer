@@ -43,10 +43,17 @@ fn def(sig: &Sig, i: usize) -> Option<Function> {
     let close = sig.close_of(open)?;
     let colon = header_colon(sig, close + 1)?;
     let last = suite_end(sig, colon);
-    let first = if sig.prev(i) == Some(KwAsync) { i - 1 } else { i };
+    let first = if sig.prev(i) == Some(KwAsync) {
+        i - 1
+    } else {
+        i
+    };
     let name = Some(sig.text(name_at).to_owned());
     let has_return = sig.is(close + 1, Arrow);
-    Some(Function::new(sig, name, (first, last)).with_signature(params(sig, open, close), has_return))
+    Some(
+        Function::new(sig, name, (first, last))
+            .with_signature(params(sig, open, close), has_return),
+    )
 }
 
 /// Parámetros sin el `self`/`cls` inicial ni los separadores `*` y `/`.

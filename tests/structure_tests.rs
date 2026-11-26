@@ -93,7 +93,10 @@ useEffect(() => { go(); }, []);
 interface I { m(a: string): void; n?: (x: number) => void }
 declare function f(a: string): void;
 ";
-    let names: Vec<String> = summary("a.ts", src).into_iter().map(|(n, _, _)| n).collect();
+    let names: Vec<String> = summary("a.ts", src)
+        .into_iter()
+        .map(|(n, _, _)| n)
+        .collect();
     assert_eq!(names, ["<anónima>", "<anónima>"]);
 }
 
@@ -112,10 +115,7 @@ function f(a, b) {
   return a?.b;
 }
 ";
-    assert_eq!(
-        summary("a.ts", src),
-        owned(&[("f", 2, 12), ("g", 0, 3)])
-    );
+    assert_eq!(summary("a.ts", src), owned(&[("f", 2, 12), ("g", 0, 3)]));
 }
 
 #[test]
@@ -154,10 +154,22 @@ def libre(x=lambda y: y, z: dict = {1: 2}): ...
     assert_eq!(
         shape,
         [
-            ("m".into(), vec![p("a", true), p("b", false), p("kw", false)], true, 7, false),
+            (
+                "m".into(),
+                vec![p("a", true), p("b", false), p("kw", false)],
+                true,
+                7,
+                false
+            ),
             ("n".into(), vec![p("c", false)], false, 1, false),
             ("interna".into(), vec![p("d", false)], false, 1, true),
-            ("libre".into(), vec![p("x", false), p("z", true)], false, 1, false),
+            (
+                "libre".into(),
+                vec![p("x", false), p("z", true)],
+                false,
+                1,
+                false
+            ),
         ]
     );
 }
@@ -173,7 +185,11 @@ p.catch(() => {});
 p.catch(function () {});
 p.catch((e) => console.error(e));
 ";
-    let silent: Vec<bool> = outline_of("a.js", js).catches.iter().map(|c| c.silent).collect();
+    let silent: Vec<bool> = outline_of("a.js", js)
+        .catches
+        .iter()
+        .map(|c| c.silent)
+        .collect();
     assert_eq!(silent, [true, true, false, false, true, true, false]);
     let py = "\
 try:
@@ -197,7 +213,11 @@ try:
 except Exception:
     log()
 ";
-    let silent: Vec<bool> = outline_of("a.py", py).catches.iter().map(|c| c.silent).collect();
+    let silent: Vec<bool> = outline_of("a.py", py)
+        .catches
+        .iter()
+        .map(|c| c.silent)
+        .collect();
     assert_eq!(silent, [true, true, false, false, false]);
 }
 

@@ -75,7 +75,10 @@ fn arrow_with_parens(sig: &Sig, open: usize) -> Option<Function> {
     let first = async_before(sig, first);
     let last = arrow_body_end(sig, arrow + 1)?;
     let name = binding_name(sig, first);
-    Some(Function::new(sig, name, (first, last)).with_signature(params(sig, open, close), has_return))
+    Some(
+        Function::new(sig, name, (first, last))
+            .with_signature(params(sig, open, close), has_return),
+    )
 }
 
 /// `x => ...`. Se descarta la `T` de `(a): T => ...`, que es el tipo de retorno de otra flecha.
@@ -102,9 +105,8 @@ fn method(sig: &Sig, open: usize) -> Option<Function> {
     }
     let kind = sig.kind(name_at)?;
     let named = matches!(kind, Ident | String | PrivateName | Int) || kind.is_keyword();
-    let generator_function = sig.prev(name_at) == Some(Star)
-        && name_at >= 2
-        && sig.is(name_at - 2, KwFunction);
+    let generator_function =
+        sig.prev(name_at) == Some(Star) && name_at >= 2 && sig.is(name_at - 2, KwFunction);
     let declared = matches!(sig.prev(name_at), Some(Dot | QuestionDot | KwFunction));
     if !named || is_control(kind) || declared || generator_function {
         return None;
@@ -121,7 +123,10 @@ fn method(sig: &Sig, open: usize) -> Option<Function> {
     }
     let last = sig.close_of(body)?;
     let name = Some(clean_name(sig.text(name_at)));
-    Some(Function::new(sig, name, (name_at, last)).with_signature(params(sig, open, close), has_return))
+    Some(
+        Function::new(sig, name, (name_at, last))
+            .with_signature(params(sig, open, close), has_return),
+    )
 }
 
 /// Palabras cuya `(...) {` no es un método: sentencias de control y `function`, que tiene su ruta.
@@ -205,7 +210,10 @@ fn starts_statement(sig: &Sig, j: usize) -> bool {
                 | KwEnum
         )
     );
-    keyword || ["let", "type", "interface"].iter().any(|w| sig.is_word(j, w))
+    keyword
+        || ["let", "type", "interface"]
+            .iter()
+            .any(|w| sig.is_word(j, w))
 }
 
 /// Salta la anotación de tipo que empieza en `start` y devuelve dónde termina: la `{` del cuerpo, la
