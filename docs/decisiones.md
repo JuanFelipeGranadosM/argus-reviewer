@@ -79,3 +79,24 @@ Un bundle copiado a `assets/` (p. ej. por Capacitor) no lo escribió una persona
 `file-too-long` es ruido. Si un archivo de 4 KiB o más tiene una media de más de 300 bytes por línea (el código
 escrito a mano ronda los 30-40), se omite y se cuenta en `summary.files_generated`. En la stdlib de CPython solo
 omite dos tablas generadas de `site-packages`.
+
+## D13 — Esqueleto estructural antes que la gramática completa
+El objetivo de Argus es que el agente no tenga que leer el proyecto: reciba diagnósticos compactos y no
+gaste ventana de contexto ni cuota. Por eso las reglas por función no esperan al parser completo. Una primera
+capa (`src/structure/`) reconoce sobre los tokens las funciones (nombre, parámetros, anotaciones, cuerpo,
+complejidad), los bloques que capturan errores, `eval`/`exec`/`new Function` y el `any` de TypeScript. El
+parser CST la sustituirá por dentro sin cambiar las reglas. El reconocimiento es conservador: ante una forma
+que no entiende, no inventa una función.
+- **Longitud de función en líneas propias.** Las líneas interiores de las funciones anidadas no cuentan para
+  la que las contiene. Contar todo marcaba cada `describe(...)` de los tests de GO-Asset (100 hallazgos, 26
+  de ellos callbacks de prueba). Con líneas propias quedan 45, todos funciones que conviene dividir.
+- **Complejidad ciclomática**: 1 más cada `if`, bucle, `case`, `catch`/`except`, `&&`/`||`/`??` (también
+  `and`/`or`) y ternario propios. Los de las funciones anidadas van a la anidada.
+- **Captura vacía**: en JS/TS, `catch {}` y `.catch(() => {})` sin nada dentro; un comentario cuenta como
+  explicación. En Python solo se marca el `except:` o `except Exception:` cuyo cuerpo es `pass`/`...` sin
+  comentario: ignorar una excepción concreta (`except ImportError: pass`) es una decisión, no un descuido.
+- **`any` explícito** solo en posición de tipo (`: any`, `as any`, `<any>`, `| any`, `= any`, `=> any`); un
+  nombre `any` no se marca. Un diagnóstico por archivo con todas las líneas, para no inflar el JSON.
+- **Anotaciones de Python** (aviso, un diagnóstico por archivo): solo funciones públicas no anidadas, sin
+  `self`/`cls`, sin las pruebas `test*` y sin exigir retorno a `__init__`. La stdlib de CPython no sirve de
+  referencia de falsos positivos para esta regla: no se anota por diseño (los tipos están en typeshed).

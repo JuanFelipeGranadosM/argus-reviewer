@@ -7,4 +7,5 @@ pub mod lexer;
 pub mod reporters;
 pub mod rules;
 pub mod scan;
+pub mod structure;
 pub mod syntax;

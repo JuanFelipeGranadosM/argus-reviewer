@@ -13,7 +13,9 @@ Fase 1 en curso. Lo que funciona hoy:
 - Lexer de Python sin pérdida, validado con round-trip byte a byte y contra `tokenize` de CPython sobre la stdlib.
 - Lexer de JavaScript/TypeScript/JSX sin pérdida, validado con round-trip y contra el parser de TypeScript
   (comentarios, regex, plantillas y texto JSX) sobre un monorepo real y su `node_modules`.
-- `argus scan` con reglas basadas en tokens para Python y JS/TS. Los archivos minificados o generados (media de
+- Esqueleto estructural (funciones, parámetros, anotaciones, complejidad, capturas de errores) para Python y
+  JS/TS, primera capa del parser (D13).
+- `argus scan` con reglas de presupuestos, tipado y seguridad para Python y JS/TS. Los archivos minificados o generados (media de
   más de 300 bytes por línea) se omiten y se cuentan en `files_generated`.
 
 ## Uso
@@ -39,8 +41,15 @@ La configuración se lee de `<ruta>/.argus.toml` si existe (esquema en la secci�
 |---|---|---|---|
 | `ARGUS-SYNTAX-001` | `syntax-error` | error | Error léxico (cadena sin cerrar, desindentación inconsistente, ...) |
 | `ARGUS-BLOAT-001` | `file-too-long` | error | Archivo por encima de `budgets.max_file_lines` |
+| `ARGUS-BLOAT-002` | `function-too-long` | error | Función con más líneas propias (sin contar funciones anidadas) que `budgets.max_function_lines` |
+| `ARGUS-BLOAT-003` | `too-many-parameters` | error | Más parámetros que `budgets.max_parameters` (sin `self`/`cls`) |
+| `ARGUS-BLOAT-004` | `high-complexity` | error | Complejidad ciclomática por encima de `budgets.max_cyclomatic_complexity` |
 | `ARGUS-SOUP-001` | `comment-soup` | aviso | Exceso de comentarios narrativos cortos y aislados frente a `budgets.max_comment_to_code_ratio` |
 | `ARGUS-TYPE-001` | `bare-suppression` | aviso | Python: `# type: ignore`, `# pyright: ignore` o `# noqa` sin código. JS/TS: `@ts-ignore`, `@ts-nocheck` y `eslint-disable` sin regla |
+| `ARGUS-TYPE-002` | `explicit-any` | error | `any` en posición de tipo en TypeScript (`typing.forbid_ts_explicit_any`) |
+| `ARGUS-TYPE-003` | `missing-annotations` | aviso | Funciones públicas de Python sin anotar parámetros o retorno (`typing.require_python_*`) |
+| `ARGUS-SEC-001` | `empty-catch` | error | `catch {}`, `.catch(() => {})` o `except Exception: pass` sin comentario (`security.forbid_empty_catch`) |
+| `ARGUS-SEC-002` | `dynamic-eval` | error | `eval`, `exec` o `new Function` (`security.forbid_dynamic_eval`) |
 | `ARGUS-IO-001` | `unreadable-file` | aviso | Archivo que no es UTF-8 o supera 4 GiB |
 
 Los IDs son estables: una regla publicada nunca cambia de ID.

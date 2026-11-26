@@ -42,6 +42,11 @@ impl AgentAction {
         self.lines = lines;
         self
     }
+
+    pub fn with_symbol(mut self, symbol: Option<String>) -> Self {
+        self.target_symbol = symbol;
+        self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]

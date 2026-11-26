@@ -82,7 +82,7 @@ fn analyze(path: &Path, display: &str, language: Language, config: &Config) -> O
         Ok(lexed) => lexed,
         Err(err) => return Outcome::Analyzed(vec![unreadable(display, &err.to_string())]),
     };
-    let ctx = FileContext::new(display, &source, &lexed, language, &config.budgets);
+    let ctx = FileContext::new(display, &source, &lexed, language, config);
     Outcome::Analyzed(rules::check(&ctx))
 }
 
