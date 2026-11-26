@@ -27,3 +27,4 @@ for dirpath, _, names in os.walk(root):
 print(f"comparados={checked} omitidos(tokenize falla o no UTF-8)={skipped} discrepancias={len(mismatches)}")
 for path, diff in mismatches[:25]:
     print(" ", os.path.relpath(path, root), diff)
+sys.exit(1 if mismatches else 0)

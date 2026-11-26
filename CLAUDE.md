@@ -46,3 +46,12 @@ de análisis estático, inferencia estructural de tipos y refactorización autom
 Roadmap de 6 fases de la especificación, con los ajustes de `docs/decisiones.md`.
 Fase actual: **Fase 1 (Base, ProjectArena, CST y Lexer/Parser con pruebas de round-trip)**.
 No avances a la Fase 2 hasta cumplir su criterio de aceptación.
+
+Hecho: lexer de Python y `argus scan` con reglas de tokens (D3). Pendiente en la Fase 1: CST red-green, parser de
+Python con recuperación de errores y lexer/parser de JS/TS.
+
+## Contrato de `argus scan`
+- El JSON de `--format agent` (`src/reporters/mod.rs`) es público: solo se añaden campos. Los IDs de regla
+  (`ARGUS-<ÁREA>-<NNN>`) nunca se reutilizan. La salida debe ser determinista (lo cubre `tests/scan_tests.rs`).
+- Antes de dar por buena una regla nueva, pásala por la stdlib de CPython (`argus scan <Lib> --format agent`) y
+  revisa los falsos positivos: es código escrito por personas y no debería marcarse en masa (ver D9).
