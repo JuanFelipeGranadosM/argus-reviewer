@@ -217,7 +217,15 @@ fn fstring_fields_allow_comments_and_literal_format_specs() {
     assert!(error_kinds(with_comment).is_empty());
     assert_eq!(
         kinds(with_comment),
-        [FString, LogicalNewline, Ident, Eq, Int, LogicalNewline, EndOfFile]
+        [
+            FString,
+            LogicalNewline,
+            Ident,
+            Eq,
+            Int,
+            LogicalNewline,
+            EndOfFile
+        ]
     );
     let specs = r#"f"{x:'^10}" f'{n:#x}' f"{v:{w}.{p}f}" f"{a['k']:>{w}}" f"{x:=5}""#;
     assert!(error_kinds(specs).is_empty());
