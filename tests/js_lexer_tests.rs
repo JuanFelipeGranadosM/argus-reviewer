@@ -47,7 +47,10 @@ fn tokens(source: &str, dialect: Dialect) -> Vec<(SyntaxKind, std::string::Strin
 }
 
 fn kinds(source: &str, dialect: Dialect) -> Vec<SyntaxKind> {
-    tokens(source, dialect).into_iter().map(|(k, _)| k).collect()
+    tokens(source, dialect)
+        .into_iter()
+        .map(|(k, _)| k)
+        .collect()
 }
 
 fn texts_of(source: &str, dialect: Dialect, kind: SyntaxKind) -> Vec<std::string::String> {
@@ -129,10 +132,7 @@ fn slash_is_regex_or_division_by_context() {
 
 #[test]
 fn regex_classes_and_escapes_do_not_end_the_literal() {
-    assert_eq!(
-        texts_of(r"x = /[/\]]+\/a/u;", TS, Regex),
-        [r"/[/\]]+\/a/u"]
-    );
+    assert_eq!(texts_of(r"x = /[/\]]+\/a/u;", TS, Regex), [r"/[/\]]+\/a/u"]);
 }
 
 #[test]
@@ -227,10 +227,7 @@ fn jsx_nests_through_attributes_fragments_and_self_closing() {
     let src = "<>\n  <A b={<C d='e' />} f>{xs.map((x) => <B key={x}>{x}</B>)}</A>\n</>";
     let lexed = lex(src, TSX);
     assert!(lexed.errors.is_empty(), "{:?}", lexed.errors);
-    assert_eq!(
-        texts_of(src, TSX, JsxText),
-        ["\n  ", "\n"]
-    );
+    assert_eq!(texts_of(src, TSX, JsxText), ["\n  ", "\n"]);
     assert_eq!(texts_of(src, TSX, String), ["'e'"]);
 }
 

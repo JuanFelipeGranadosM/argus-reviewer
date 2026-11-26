@@ -19,7 +19,8 @@ pub(super) fn looks_like_type_parameters(after_lt: &str) -> bool {
     let extends = next
         .strip_prefix("extends")
         .is_some_and(|r| r.starts_with(char::is_whitespace));
-    let generic_arrow = rest.starts_with(">(") && name.starts_with(|c: char| c.is_ascii_uppercase());
+    let generic_arrow =
+        rest.starts_with(">(") && name.starts_with(|c: char| c.is_ascii_uppercase());
     next.starts_with(',') || next.starts_with('=') || extends || generic_arrow
 }
 
