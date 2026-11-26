@@ -46,8 +46,16 @@ fn repo(name: &str) -> PathBuf {
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(&root).unwrap();
     git(&root, &["init", "-q", "-b", "main"]);
-    write(&root, "src/app.ts", &format!("{}{GUARD}", long_function("")));
-    write(&root, "src/ok.py", "def suma(a: int, b: int) -> int:\n    return a + b\n");
+    write(
+        &root,
+        "src/app.ts",
+        &format!("{}{GUARD}", long_function("")),
+    );
+    write(
+        &root,
+        "src/ok.py",
+        "def suma(a: int, b: int) -> int:\n    return a + b\n",
+    );
     git(&root, &["add", "."]);
     git(&root, &["commit", "-q", "-m", "base"]);
     root
@@ -61,7 +69,11 @@ fn agent_edits(root: &Path) {
         long_function("  const extra = 1;\n")
     );
     write(root, "src/app.ts", &app);
-    write(root, "src/nuevo.ts", "export const f = (x: string) => eval(x);\n");
+    write(
+        root,
+        "src/nuevo.ts",
+        "export const f = (x: string) => eval(x);\n",
+    );
     write(root, "node_modules/dep/index.ts", "eval('1');\n");
     write(root, ".cache/tmp.ts", "eval('1');\n");
 }

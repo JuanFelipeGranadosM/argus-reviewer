@@ -47,7 +47,9 @@ impl Repo {
     /// Commit desde el que se mide el cambio: el ancestro común de `rev` y `HEAD`. Con `HEAD` es el
     /// propio `HEAD`; con `main` es donde la rama actual se separó de `main`.
     pub fn merge_base(&self, rev: &str) -> Result<String, GitError> {
-        Ok(run(&self.root, &["merge-base", rev, "HEAD"])?.trim().to_owned())
+        Ok(run(&self.root, &["merge-base", rev, "HEAD"])?
+            .trim()
+            .to_owned())
     }
 
     /// Archivos modificados, renombrados o nuevos (con seguimiento o sin él) desde `base`.
@@ -73,11 +75,16 @@ impl Repo {
             &self.root,
             &["ls-files", "--others", "--exclude-standard", "-z"],
         )?;
-        changes.extend(untracked.split('\0').filter(|p| !p.is_empty()).map(|path| Change {
-            path: path.to_owned(),
-            base_path: None,
-            lines: None,
-        }));
+        changes.extend(
+            untracked
+                .split('\0')
+                .filter(|p| !p.is_empty())
+                .map(|path| Change {
+                    path: path.to_owned(),
+                    base_path: None,
+                    lines: None,
+                }),
+        );
         changes.sort_by(|a, b| a.path.cmp(&b.path));
         changes.dedup_by(|a, b| a.path == b.path);
         Ok(changes)
@@ -85,7 +92,11 @@ impl Repo {
 
     /// Contenido en `base` de cada ruta, con un solo proceso `git cat-file --batch`. Las rutas que no
     /// existen allí o no son UTF-8 no aparecen en el resultado.
-    pub fn read_all(&self, base: &str, paths: &[&str]) -> Result<BTreeMap<String, String>, GitError> {
+    pub fn read_all(
+        &self,
+        base: &str,
+        paths: &[&str],
+    ) -> Result<BTreeMap<String, String>, GitError> {
         if paths.is_empty() {
             return Ok(BTreeMap::new());
         }
@@ -206,7 +217,9 @@ fn unquote(path: &str) -> String {
 
 /// Rango añadido de `-a,b +c,d @@`. Con `d = 0` solo se borró: se marcan las líneas que lo rodean.
 fn added_range(hunk: &str) -> Option<(u32, u32)> {
-    let plus = hunk.split_whitespace().find_map(|part| part.strip_prefix('+'))?;
+    let plus = hunk
+        .split_whitespace()
+        .find_map(|part| part.strip_prefix('+'))?;
     let (start, count) = match plus.split_once(',') {
         Some((start, count)) => (start.parse::<u32>().ok()?, count.parse::<u32>().ok()?),
         None => (plus.parse::<u32>().ok()?, 1),
@@ -226,7 +239,12 @@ mod tests {
         let output = b"aa blob 6\na\nb\nc\n\nx.py missing\nbb blob 2\n\xff\xfe\ncc blob 0\n\n";
         assert_eq!(
             parse_batch(output),
-            [Some("a\nb\nc\n".to_owned()), None, None, Some(String::new())]
+            [
+                Some("a\nb\nc\n".to_owned()),
+                None,
+                None,
+                Some(String::new())
+            ]
         );
     }
 

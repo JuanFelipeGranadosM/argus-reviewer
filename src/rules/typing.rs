@@ -97,8 +97,7 @@ fn missing_annotations(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
         "Anotar todos los parámetros y el tipo de retorno de las funciones indicadas (`-> None` si no devuelven nada).",
     )
     .with_lines(lines);
-    let diagnostic =
-        MISSING_ANNOTATIONS.diagnostic(ctx.file, (first, last), message, Some(action));
+    let diagnostic = MISSING_ANNOTATIONS.diagnostic(ctx.file, (first, last), message, Some(action));
     out.push(diagnostic.with_metric(u32::try_from(count).unwrap_or(u32::MAX)));
 }
 

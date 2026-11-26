@@ -129,17 +129,37 @@ mod tests {
 
     #[test]
     fn a_worse_metric_is_a_new_problem_and_shifted_lines_are_not() {
-        let base = [diag("ARGUS-BLOAT-002", 10, "`f` tiene 80 líneas en la línea 10", 80)];
-        let same = vec![diag("ARGUS-BLOAT-002", 14, "`f` tiene 80 líneas en la línea 14", 80)];
+        let base = [diag(
+            "ARGUS-BLOAT-002",
+            10,
+            "`f` tiene 80 líneas en la línea 10",
+            80,
+        )];
+        let same = vec![diag(
+            "ARGUS-BLOAT-002",
+            14,
+            "`f` tiene 80 líneas en la línea 14",
+            80,
+        )];
         assert_eq!(split(same, &base, |_| true).1, 1);
-        let worse = vec![diag("ARGUS-BLOAT-002", 14, "`f` tiene 95 líneas en la línea 14", 95)];
+        let worse = vec![diag(
+            "ARGUS-BLOAT-002",
+            14,
+            "`f` tiene 95 líneas en la línea 14",
+            95,
+        )];
         assert_eq!(lines(&split(worse, &base, |_| true).0), [14]);
     }
 
     #[test]
     fn per_file_rules_pair_by_rule_only() {
         let base = [diag("ARGUS-TYPE-003", 1, "1 función pública: `a`.", 1)];
-        let more = vec![diag("ARGUS-TYPE-003", 1, "2 funciones públicas: `a`, `b`.", 2)];
+        let more = vec![diag(
+            "ARGUS-TYPE-003",
+            1,
+            "2 funciones públicas: `a`, `b`.",
+            2,
+        )];
         assert_eq!(split(more, &base, |_| true).0.len(), 1);
         let fewer = vec![diag("ARGUS-TYPE-003", 5, "1 función pública: `b`.", 1)];
         assert_eq!(split(fewer, &base, |_| true), (vec![], 1));
