@@ -31,11 +31,20 @@ fn project(name: &str) -> PathBuf {
     let files: [(&str, &str); 8] = [
         ("soup.py", SOUP),
         ("long.py", &long),
-        ("clean.py", "def suma(a: int, b: int) -> int:\n    return a + b\n"),
-        ("bare.py", "x = f()  # type: ignore\nimport os  # noqa\ny = g()  # type: ignore[call-arg]\n"),
+        (
+            "clean.py",
+            "def suma(a: int, b: int) -> int:\n    return a + b\n",
+        ),
+        (
+            "bare.py",
+            "x = f()  # type: ignore\nimport os  # noqa\ny = g()  # type: ignore[call-arg]\n",
+        ),
         ("pkg/broken.py", "s = 'sin cerrar\nok = 1\n"),
         ("web/app.ts", "export const a = 1;\n"),
-        ("node_modules/dep/index.py", "# x\n# x\n# x\n# x\n# x\n# x\n"),
+        (
+            "node_modules/dep/index.py",
+            "# x\n# x\n# x\n# x\n# x\n# x\n",
+        ),
         (".venv/lib/site.py", "s = 'roto\n"),
     ];
     for (path, text) in files {
@@ -47,7 +56,10 @@ fn project(name: &str) -> PathBuf {
 }
 
 fn argus(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_argus")).args(args).output().unwrap()
+    Command::new(env!("CARGO_BIN_EXE_argus"))
+        .args(args)
+        .output()
+        .unwrap()
 }
 
 #[test]
@@ -73,7 +85,11 @@ fn scan_reports_each_rule_once_per_file() {
     );
     assert_eq!(report.summary.blocking_issues, 2);
     assert_eq!(report.summary.warnings, 3);
-    let soup = report.diagnostics.iter().find(|d| d.file == "soup.py").unwrap();
+    let soup = report
+        .diagnostics
+        .iter()
+        .find(|d| d.file == "soup.py")
+        .unwrap();
     assert_eq!(soup.severity, Severity::Warning);
     assert_eq!(soup.agent_action.as_ref().unwrap().lines, [1, 5, 7, 9, 11]);
 }
@@ -95,12 +111,25 @@ fn explanatory_comment_blocks_are_not_soup() {
 fn agent_format_follows_contract_and_exits_one_on_blocking_issues() {
     let root = project("scan_agent");
     let output = argus(&["scan", root.to_str().unwrap(), "--format", "agent"]);
-    assert_eq!(output.status.code(), Some(1), "{}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let json: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(json["summary"]["files_scanned"], 5);
     assert_eq!(json["summary"]["blocking_issues"], 2);
     let first = &json["diagnostics"][0];
-    for key in ["id", "severity", "rule", "file", "line_start", "line_end", "message"] {
+    for key in [
+        "id",
+        "severity",
+        "rule",
+        "file",
+        "line_start",
+        "line_end",
+        "message",
+    ] {
         assert!(!first[key].is_null(), "falta {key}: {first}");
     }
     assert_eq!(first["severity"], "warning");
@@ -125,7 +154,10 @@ fn clean_file_exits_zero() {
 
 #[test]
 fn tool_failures_exit_two() {
-    assert_eq!(argus(&["scan", "no/existe/en/ningun/lado"]).status.code(), Some(2));
+    assert_eq!(
+        argus(&["scan", "no/existe/en/ningun/lado"]).status.code(),
+        Some(2)
+    );
     let root = project("scan_bad_config");
     fs::write(root.join(".argus.toml"), "[budgets]\nmax_file_line = 1\n").unwrap();
     let output = argus(&["scan", root.to_str().unwrap()]);

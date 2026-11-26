@@ -75,9 +75,8 @@ pub struct Report {
 impl Report {
     /// Ordena los diagnósticos de forma determinista y recalcula los contadores del resumen.
     pub fn finalize(&mut self) {
-        self.diagnostics.sort_by(|a, b| {
-            (&a.file, a.line_start, a.id).cmp(&(&b.file, b.line_start, b.id))
-        });
+        self.diagnostics
+            .sort_by(|a, b| (&a.file, a.line_start, a.id).cmp(&(&b.file, b.line_start, b.id)));
         let errors = self
             .diagnostics
             .iter()

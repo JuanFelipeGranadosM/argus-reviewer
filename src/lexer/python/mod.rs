@@ -84,7 +84,11 @@ impl<'a> PyLexer<'a> {
         while let Some(c) = self.cur.first() {
             match c {
                 ' ' => column = column.saturating_add(1),
-                '\t' => column = (column / TAB_SIZE).saturating_add(1).saturating_mul(TAB_SIZE),
+                '\t' => {
+                    column = (column / TAB_SIZE)
+                        .saturating_add(1)
+                        .saturating_mul(TAB_SIZE)
+                }
                 '\x0c' => column = 0,
                 _ => break,
             }

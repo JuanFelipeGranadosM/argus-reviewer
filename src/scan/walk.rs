@@ -80,19 +80,37 @@ mod tests {
 
     #[test]
     fn exclusion_patterns() {
-        let excludes = ["node_modules".to_owned(), "*.generado.ts".to_owned(), "tests/fixtures".to_owned()];
+        let excludes = [
+            "node_modules".to_owned(),
+            "*.generado.ts".to_owned(),
+            "tests/fixtures".to_owned(),
+        ];
         assert!(is_excluded("web/node_modules", "node_modules", &excludes));
-        assert!(is_excluded("src/api.generado.ts", "api.generado.ts", &excludes));
+        assert!(is_excluded(
+            "src/api.generado.ts",
+            "api.generado.ts",
+            &excludes
+        ));
         assert!(is_excluded("tests/fixtures/python", "python", &excludes));
         assert!(is_excluded("tests/fixtures", "fixtures", &excludes));
-        assert!(!is_excluded("tests/fixtures_extra", "fixtures_extra", &excludes));
+        assert!(!is_excluded(
+            "tests/fixtures_extra",
+            "fixtures_extra",
+            &excludes
+        ));
         assert!(!is_excluded("src/app.py", "app.py", &excludes));
     }
 
     #[test]
     fn display_paths_use_forward_slashes() {
         let root = Path::new("proyecto");
-        assert_eq!(display_path(root, &root.join("src").join("app.py")), "src/app.py");
-        assert_eq!(display_path(Path::new("solo.py"), Path::new("solo.py")), "solo.py");
+        assert_eq!(
+            display_path(root, &root.join("src").join("app.py")),
+            "src/app.py"
+        );
+        assert_eq!(
+            display_path(Path::new("solo.py"), Path::new("solo.py")),
+            "solo.py"
+        );
     }
 }

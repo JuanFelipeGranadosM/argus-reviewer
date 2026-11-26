@@ -34,10 +34,17 @@ pub(super) fn check(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
         );
         let action = AgentAction::new(
             "add_suppression_code",
-            format!("Usar {correct} con el código concreto, o corregir el error y quitar la supresión."),
+            format!(
+                "Usar {correct} con el código concreto, o corregir el error y quitar la supresión."
+            ),
         )
         .with_lines(vec![comment.line]);
-        out.push(BARE_SUPPRESSION.diagnostic(ctx.file, (comment.line, comment.line), message, Some(action)));
+        out.push(BARE_SUPPRESSION.diagnostic(
+            ctx.file,
+            (comment.line, comment.line),
+            message,
+            Some(action),
+        ));
     }
 }
 

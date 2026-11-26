@@ -48,3 +48,9 @@ personas. Solo cuentan los comentarios narrativos de 6 palabras o menos que no f
 anterior o la siguiente, ya sean comentarios en línea propia (explicaciones del porqué) o al final de línea
 (anotaciones de tablas). Con eso, la stdlib baja a 6 archivos, todos tablas generadas. La sopa ligera (ratio
 bajo 0,25) no se marca: decidir qué comentario sobra es tarea de `argus clean` (Fase 5).
+
+## D10 — Identificadores Unicode como superconjunto
+Sin tablas Unicode (`unicode-ident` no está entre las dependencias permitidas), el lexer trata como parte de un
+identificador cualquier carácter no ASCII que no sea espacio. El código Python válido nunca da error (marcas
+combinantes, selectores de variante, `℘`, letras matemáticas). A cambio, un identificador inválido como `€` no
+se detecta en el lexer: argus no es un compilador y prioriza no dar falsos positivos sobre código válido.

@@ -59,12 +59,15 @@ pub(super) fn operator(rest: &str) -> Option<(SyntaxKind, &'static str)> {
         .map(|&(op, kind)| (kind, op))
 }
 
+/// Superconjunto de los identificadores de Python sin tablas Unicode: todo carácter no ASCII que no
+/// sea espacio cuenta. Así el código válido (marcas combinantes, selectores de variante, `℘`, ...)
+/// nunca da error; a cambio, un identificador inválido como `€` no se detecta en el lexer.
 pub(super) fn is_ident_start(c: char) -> bool {
-    c == '_' || c.is_alphabetic()
+    c == '_' || c.is_ascii_alphabetic() || (!c.is_ascii() && !c.is_whitespace())
 }
 
 pub(super) fn is_ident_continue(c: char) -> bool {
-    c == '_' || c.is_alphanumeric()
+    is_ident_start(c) || c.is_ascii_digit()
 }
 
 /// Palabras reservadas duras. Las blandas (`match`, `case`, `type`, `_`) son `Ident` y las decide el parser.

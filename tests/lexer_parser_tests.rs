@@ -11,13 +11,24 @@ fn assert_lossless(source: &str, lexed: &Lexed, label: &str) {
     let mut next = 0u32;
     let mut rebuilt = std::string::String::with_capacity(source.len());
     for token in &lexed.tokens {
-        assert_eq!(token.range.start, next, "{label}: hueco o solape en {token:?}");
+        assert_eq!(
+            token.range.start, next,
+            "{label}: hueco o solape en {token:?}"
+        );
         next = token.range.end;
         rebuilt.push_str(token.text(source));
     }
-    assert_eq!(next as usize, source.len(), "{label}: los tokens no llegan al final");
+    assert_eq!(
+        next as usize,
+        source.len(),
+        "{label}: los tokens no llegan al final"
+    );
     assert_eq!(rebuilt, source, "{label}: el round-trip no es idéntico");
-    assert_eq!(lexed.tokens.last().map(|t| t.kind), Some(EndOfFile), "{label}");
+    assert_eq!(
+        lexed.tokens.last().map(|t| t.kind),
+        Some(EndOfFile),
+        "{label}"
+    );
 }
 
 fn lex(source: &str) -> Lexed {
@@ -57,7 +68,12 @@ fn fixtures_round_trip_without_errors() {
         let source = fs::read_to_string(&path).unwrap();
         let lexed = python::lex(&source).unwrap();
         assert_lossless(&source, &lexed, &path.display().to_string());
-        assert!(lexed.errors.is_empty(), "{}: {:?}", path.display(), lexed.errors);
+        assert!(
+            lexed.errors.is_empty(),
+            "{}: {:?}",
+            path.display(),
+            lexed.errors
+        );
     }
 }
 
@@ -87,9 +103,26 @@ fn indentation_emits_indent_and_dedent() {
     assert_eq!(
         kinds(source),
         [
-            KwDef, Ident, LParen, RParen, Colon, LogicalNewline, Indent, KwIf, Ident, Colon,
-            LogicalNewline, Indent, KwPass, LogicalNewline, Dedent, KwReturn, Int, LogicalNewline,
-            Dedent, EndOfFile,
+            KwDef,
+            Ident,
+            LParen,
+            RParen,
+            Colon,
+            LogicalNewline,
+            Indent,
+            KwIf,
+            Ident,
+            Colon,
+            LogicalNewline,
+            Indent,
+            KwPass,
+            LogicalNewline,
+            Dedent,
+            KwReturn,
+            Int,
+            LogicalNewline,
+            Dedent,
+            EndOfFile,
         ]
     );
 }
@@ -99,7 +132,19 @@ fn blank_and_comment_lines_do_not_affect_indentation() {
     let source = "if x:\n    a\n\n# c\n  \n    b\n";
     assert_eq!(
         kinds(source),
-        [KwIf, Ident, Colon, LogicalNewline, Indent, Ident, LogicalNewline, Ident, LogicalNewline, Dedent, EndOfFile]
+        [
+            KwIf,
+            Ident,
+            Colon,
+            LogicalNewline,
+            Indent,
+            Ident,
+            LogicalNewline,
+            Ident,
+            LogicalNewline,
+            Dedent,
+            EndOfFile
+        ]
     );
 }
 
@@ -107,7 +152,16 @@ fn blank_and_comment_lines_do_not_affect_indentation() {
 fn newlines_inside_brackets_and_continuations_are_trivia() {
     assert_eq!(
         kinds("x = (\n  1,\n)\n"),
-        [Ident, Eq, LParen, Int, Comma, RParen, LogicalNewline, EndOfFile]
+        [
+            Ident,
+            Eq,
+            LParen,
+            Int,
+            Comma,
+            RParen,
+            LogicalNewline,
+            EndOfFile
+        ]
     );
     assert_eq!(
         kinds("x = 1 + \\\n    2\n"),
@@ -119,27 +173,70 @@ fn newlines_inside_brackets_and_continuations_are_trivia() {
 fn missing_trailing_newline_still_closes_blocks() {
     assert_eq!(
         kinds("if x:\n    y"),
-        [KwIf, Ident, Colon, LogicalNewline, Indent, Ident, LogicalNewline, Dedent, EndOfFile]
+        [
+            KwIf,
+            Ident,
+            Colon,
+            LogicalNewline,
+            Indent,
+            Ident,
+            LogicalNewline,
+            Dedent,
+            EndOfFile
+        ]
     );
 }
 
 #[test]
 fn inconsistent_dedent_is_reported() {
-    assert_eq!(error_kinds("if x:\n        a\n    b\n"), [LexErrorKind::InconsistentDedent]);
+    assert_eq!(
+        error_kinds("if x:\n        a\n    b\n"),
+        [LexErrorKind::InconsistentDedent]
+    );
 }
 
 #[test]
 fn fstrings_with_nested_quotes_are_one_token() {
-    assert_eq!(kinds(r#"f"{x["k"]}" + f'{a!r:>{w}}'"#), [FString, Plus, FString, LogicalNewline, EndOfFile]);
-    assert_eq!(kinds(r#"f"{", ".join(xs)}""#), [FString, LogicalNewline, EndOfFile]);
-    assert_eq!(kinds("f'''{\n x\n}'''"), [FString, LogicalNewline, EndOfFile]);
+    assert_eq!(
+        kinds(r#"f"{x["k"]}" + f'{a!r:>{w}}'"#),
+        [FString, Plus, FString, LogicalNewline, EndOfFile]
+    );
+    assert_eq!(
+        kinds(r#"f"{", ".join(xs)}""#),
+        [FString, LogicalNewline, EndOfFile]
+    );
+    assert_eq!(
+        kinds("f'''{\n x\n}'''"),
+        [FString, LogicalNewline, EndOfFile]
+    );
+}
+
+#[test]
+fn fstring_fields_allow_comments_and_literal_format_specs() {
+    let with_comment = "f'''{\n    x  # it's \"fine\" }\n}'''\ny = 1\n";
+    assert!(error_kinds(with_comment).is_empty());
+    assert_eq!(
+        kinds(with_comment),
+        [FString, LogicalNewline, Ident, Eq, Int, LogicalNewline, EndOfFile]
+    );
+    let specs = r#"f"{x:'^10}" f'{n:#x}' f"{v:{w}.{p}f}" f"{a['k']:>{w}}" f"{x:=5}""#;
+    assert!(error_kinds(specs).is_empty());
+    assert_eq!(kinds(specs).iter().filter(|&&k| k == FString).count(), 5);
 }
 
 #[test]
 fn string_prefixes_and_quotes() {
     assert_eq!(
         kinds(r#"rb'\x' """a"b""" '' BR"\"" u'u'"#),
-        [String, String, String, String, String, LogicalNewline, EndOfFile]
+        [
+            String,
+            String,
+            String,
+            String,
+            String,
+            LogicalNewline,
+            EndOfFile
+        ]
     );
 }
 
@@ -148,28 +245,87 @@ fn unterminated_string_stops_at_line_end() {
     let source = "s = 'abc\nx = 1\n";
     assert_eq!(error_kinds(source), [LexErrorKind::UnterminatedString]);
     assert!(kinds(source).ends_with(&[Ident, Eq, Int, LogicalNewline, EndOfFile]));
-    assert_eq!(error_kinds("s = '''abc"), [LexErrorKind::UnterminatedString]);
+    assert_eq!(
+        error_kinds("s = '''abc"),
+        [LexErrorKind::UnterminatedString]
+    );
 }
 
 #[test]
 fn numbers() {
     assert_eq!(
         kinds("0xFF 1_000 3.14 .5 1. 1e5 2.5E-3 2j 1if"),
-        [Int, Int, Float, Float, Float, Float, Float, Imaginary, Int, KwIf, LogicalNewline, EndOfFile]
+        [
+            Int,
+            Int,
+            Float,
+            Float,
+            Float,
+            Float,
+            Float,
+            Imaginary,
+            Int,
+            KwIf,
+            LogicalNewline,
+            EndOfFile
+        ]
     );
 }
 
 #[test]
 fn soft_keywords_are_identifiers() {
-    assert_eq!(kinds("match type case _"), [Ident, Ident, Ident, Ident, LogicalNewline, EndOfFile]);
-    assert_eq!(kinds("lambda None"), [KwLambda, KwNone, LogicalNewline, EndOfFile]);
+    assert_eq!(
+        kinds("match type case _"),
+        [Ident, Ident, Ident, Ident, LogicalNewline, EndOfFile]
+    );
+    assert_eq!(
+        kinds("lambda None"),
+        [KwLambda, KwNone, LogicalNewline, EndOfFile]
+    );
+}
+
+#[test]
+fn unicode_identifiers_are_single_tokens() {
+    for source in [
+        "x\u{e0100} = 4",
+        "\u{2118} = 1",
+        "nama\u{0938}\u{094d}te = 1",
+        "\u{1d518}\u{1d52b} = 1",
+        "µ = 2",
+    ] {
+        assert!(error_kinds(source).is_empty(), "{source}");
+        assert_eq!(
+            kinds(source),
+            [Ident, Eq, Int, LogicalNewline, EndOfFile],
+            "{source}"
+        );
+    }
 }
 
 #[test]
 fn garbage_never_panics_and_round_trips() {
     for source in [
-        "", "$?`", "\\x", "\\", "\u{feff}x = 1", "\0", "'''", "f'{", "f'{'", "f\"{x\"", "((((",
-        "))))\n  x", "\t \x0c\n", "😀 = 1", "\r", "\r\n\r\n", "x\\\r\ny", "'\\", "f'\\N{", "0x", "1e",
+        "",
+        "$?`",
+        "\\x",
+        "\\",
+        "\u{feff}x = 1",
+        "\0",
+        "'''",
+        "f'{",
+        "f'{'",
+        "f\"{x\"",
+        "((((",
+        "))))\n  x",
+        "\t \x0c\n",
+        "😀 = 1",
+        "\r",
+        "\r\n\r\n",
+        "x\\\r\ny",
+        "'\\",
+        "f'\\N{",
+        "0x",
+        "1e",
     ] {
         lex(source);
     }
@@ -179,27 +335,49 @@ fn garbage_never_panics_and_round_trips() {
 
 #[test]
 fn fixture_comments_are_classified() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/python/llm_soup_service.py");
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/python/llm_soup_service.py");
     let source = fs::read_to_string(path).unwrap();
     let lexed = lex(&source);
     let mut in_header = true;
     let mut found = Vec::new();
     for token in &lexed.tokens {
         match token.kind {
-            Comment => found.push((token.text(&source), classify_python(token.text(&source), in_header))),
+            Comment => found.push((
+                token.text(&source),
+                classify_python(token.text(&source), in_header),
+            )),
             k if !k.is_trivia() => in_header = false,
             _ => {}
         }
     }
     let kind_of = |text: &str| found.iter().find(|(t, _)| *t == text).map(|(_, k)| *k);
-    assert_eq!(kind_of("#!/usr/bin/env python3"), Some(CommentKind::Directive));
-    assert_eq!(kind_of("# -*- coding: utf-8 -*-"), Some(CommentKind::Directive));
-    assert_eq!(kind_of("# Copyright 2026 Ejemplo S.A."), Some(CommentKind::License));
-    assert_eq!(kind_of("# type: ignore[attr-defined]"), Some(CommentKind::Directive));
+    assert_eq!(
+        kind_of("#!/usr/bin/env python3"),
+        Some(CommentKind::Directive)
+    );
+    assert_eq!(
+        kind_of("# -*- coding: utf-8 -*-"),
+        Some(CommentKind::Directive)
+    );
+    assert_eq!(
+        kind_of("# Copyright 2026 Ejemplo S.A."),
+        Some(CommentKind::License)
+    );
+    assert_eq!(
+        kind_of("# type: ignore[attr-defined]"),
+        Some(CommentKind::Directive)
+    );
     assert_eq!(kind_of("# noqa: E501"), Some(CommentKind::Directive));
-    assert_eq!(kind_of("# TODO: paginar resultados"), Some(CommentKind::Marker));
+    assert_eq!(
+        kind_of("# TODO: paginar resultados"),
+        Some(CommentKind::Marker)
+    );
     assert_eq!(kind_of("#: Tasa de IVA vigente"), Some(CommentKind::Doc));
-    let narrative = found.iter().filter(|(_, k)| *k == CommentKind::Narrative).count();
+    let narrative = found
+        .iter()
+        .filter(|(_, k)| *k == CommentKind::Narrative)
+        .count();
     assert_eq!(narrative, 7, "{found:#?}");
 }
 
@@ -220,17 +398,27 @@ fn external_corpus_round_trips() {
             if path.extension().is_none_or(|ext| ext != "py") {
                 continue;
             }
-            let Ok(source) = fs::read_to_string(&path) else { continue };
+            let Ok(source) = fs::read_to_string(&path) else {
+                continue;
+            };
             let lexed = python::lex(&source).unwrap();
             assert_lossless(&source, &lexed, &path.display().to_string());
             files += 1;
             bytes += source.len();
             if let Some(err) = lexed.errors.first() {
-                with_errors.push(format!("{} @{}: {}", path.display(), err.range.start, err.kind));
+                with_errors.push(format!(
+                    "{} @{}: {}",
+                    path.display(),
+                    err.range.start,
+                    err.kind
+                ));
             }
         }
     }
-    println!("{files} archivos, {bytes} bytes, {} con errores de lexer", with_errors.len());
+    println!(
+        "{files} archivos, {bytes} bytes, {} con errores de lexer",
+        with_errors.len()
+    );
     for line in &with_errors {
         println!("  {line}");
     }
