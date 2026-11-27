@@ -18,6 +18,9 @@ Fase 1 en curso. Lo que funciona hoy:
 - `argus scan` con reglas de presupuestos, tipado y seguridad para Python y JS/TS. Los archivos minificados o generados (media de
   más de 300 bytes por línea) se omiten y se cuentan en `files_generated`.
 - `argus diff`, modo incremental: solo los problemas que introduce o empeora el cambio frente a git (D14).
+- Tres niveles de reglas (contrato, aviso, sugerencia) ajustables por proyecto con `[rules]` y `[style]` (D15).
+- Sugerencias con la solución escrita: un bucle que solo llena una colección llega con su comprensión o su
+  `map`/`filter` equivalente, comprobada para que no cambie el comportamiento (D16).
 
 ## Uso
 
@@ -42,6 +45,18 @@ La configuración se lee de `<ruta>/.argus.toml` si existe (esquema en la secci�
 `node_modules`, `venv`, `dist`, `build`, `__pycache__`, `target` y las entradas ocultas se excluyen siempre;
 `[general].exclude` añade patrones: `nombre`, `*.sufijo` o `ruta/relativa`.
 
+Cada proyecto adapta las reglas a su forma de programar:
+
+```toml
+[rules]                       # nivel por ID: "off" | "suggestion" | "warning" | "error"
+"ARGUS-IDIOM-002" = "off"     # este proyecto acepta `==`
+"ARGUS-STYLE-001" = "warning" # y quiere que la consistencia de nombres avise
+
+[style]                       # convención de nombres de funciones: "auto" (la de cada archivo),
+js_function_naming = "camelCase"      # "snake_case", "camelCase" u "off"
+python_function_naming = "snake_case"
+```
+
 ## Reglas
 
 | ID | Regla | Severidad | Detecta |
@@ -57,9 +72,18 @@ La configuración se lee de `<ruta>/.argus.toml` si existe (esquema en la secci�
 | `ARGUS-TYPE-003` | `missing-annotations` | aviso | Funciones públicas de Python sin anotar parámetros o retorno (`typing.require_python_*`) |
 | `ARGUS-SEC-001` | `empty-catch` | error | `catch {}`, `.catch(() => {})` o `except Exception: pass` sin comentario (`security.forbid_empty_catch`) |
 | `ARGUS-SEC-002` | `dynamic-eval` | error | `eval`, `exec` o `new Function` (`security.forbid_dynamic_eval`) |
+| `ARGUS-IDIOM-001` | `none-equality` | aviso | Python: `== None` o `!= None` en lugar de `is None` (PEP 8) |
+| `ARGUS-IDIOM-002` | `loose-equality` | aviso | JS/TS: `==` o `!=` salvo frente a `null`/`undefined` |
+| `ARGUS-IDIOM-003` | `var-declaration` | aviso | JS/TS: `var` (fuera de `declare var` y de los `.d.ts`) |
+| `ARGUS-IDIOM-004` | `debugger-statement` | error | JS/TS: sentencia `debugger` olvidada |
+| `ARGUS-IDIOM-005` | `lambda-assignment` | sugerencia | Python: `nombre = lambda ...` en lugar de `def` (PEP 8) |
+| `ARGUS-STYLE-001` | `naming-inconsistency` | sugerencia | Función cuyo nombre no sigue la convención del archivo o la fijada en `[style]` |
+| `ARGUS-STYLE-002` | `accumulator-loop` | sugerencia | Bucle que solo llena una colección; trae escrita la comprensión o el `map`/`filter` equivalente (D16) |
 | `ARGUS-IO-001` | `unreadable-file` | aviso | Archivo que no es UTF-8 o supera 4 GiB |
 
-Los IDs son estables: una regla publicada nunca cambia de ID.
+Los IDs son estables: una regla publicada nunca cambia de ID. Los errores son contratos objetivos y bloquean;
+los avisos señalan problemas probables; las sugerencias son de estilo, piden la convención del propio
+proyecto y nunca bloquean (D15).
 
 ## Integración en harness y CI
 
@@ -68,7 +92,7 @@ con instrucciones de remediación para que el agente corrija en un solo turno:
 
 ```json
 {
-  "summary": { "files_scanned": 7, "files_unsupported": 0, "files_generated": 1, "blocking_issues": 2, "warnings": 4 },
+  "summary": { "files_scanned": 7, "files_unsupported": 0, "files_generated": 1, "blocking_issues": 2, "warnings": 4, "suggestions": 1 },
   "diagnostics": [
     {
       "id": "ARGUS-TYPE-001",

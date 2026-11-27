@@ -80,7 +80,7 @@ fn language_enabled(config: &Config, language: Language) -> bool {
 fn analyze(path: &Path, display: &str, language: Language, config: &Config) -> Outcome {
     match fs::read_to_string(path) {
         Ok(source) => analyze_source(&source, path, display, language, config),
-        Err(err) => Outcome::Analyzed(vec![unreadable(display, &err.to_string())]),
+        Err(err) => Outcome::Analyzed(unreadable(display, &err.to_string(), config)),
     }
 }
 
@@ -97,7 +97,7 @@ fn analyze_source(
     }
     let lexed = match lex_file(source, language, path) {
         Ok(lexed) => lexed,
-        Err(err) => return Outcome::Analyzed(vec![unreadable(display, &err.to_string())]),
+        Err(err) => return Outcome::Analyzed(unreadable(display, &err.to_string(), config)),
     };
     let ctx = FileContext::new(display, source, &lexed, language, config);
     Outcome::Analyzed(rules::check(&ctx))
@@ -108,11 +108,13 @@ fn looks_generated(source: &str) -> bool {
     source.len() >= GENERATED_MIN_BYTES && source.len() / lines > GENERATED_BYTES_PER_LINE
 }
 
-fn unreadable(display: &str, reason: &str) -> Diagnostic {
-    UNREADABLE_FILE.diagnostic(
+fn unreadable(display: &str, reason: &str, config: &Config) -> Vec<Diagnostic> {
+    let mut diagnostics = vec![UNREADABLE_FILE.diagnostic(
         display,
         (1, 1),
         format!("No se analizó el archivo: {reason}."),
         None,
-    )
+    )];
+    rules::apply_levels(config, &mut diagnostics);
+    diagnostics
 }

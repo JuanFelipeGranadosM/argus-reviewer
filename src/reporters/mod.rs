@@ -6,11 +6,15 @@ pub mod human;
 
 use serde::Serialize;
 
+/// `error` bloquea (código de salida 1); `warning` señala un problema probable; `suggestion` es una
+/// recomendación de estilo con varias escuelas válidas, nunca bloquea y se puede apagar o endurecer
+/// por regla en `[rules]`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     Error,
     Warning,
+    Suggestion,
 }
 
 /// Instrucción de remediación lista para que un agente la ejecute en un solo turno.
@@ -82,6 +86,7 @@ pub struct Summary {
     pub files_generated: usize,
     pub blocking_issues: usize,
     pub warnings: usize,
+    pub suggestions: usize,
     /// Solo en `argus diff`: contra qué se comparó y cuántos problemas previos no se listan.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub incremental: Option<Incremental>,
@@ -109,13 +114,15 @@ impl Report {
     pub fn finalize(&mut self) {
         self.diagnostics
             .sort_by(|a, b| (&a.file, a.line_start, a.id).cmp(&(&b.file, b.line_start, b.id)));
-        let errors = self
-            .diagnostics
-            .iter()
-            .filter(|d| d.severity == Severity::Error)
-            .count();
-        self.summary.blocking_issues = errors;
-        self.summary.warnings = self.diagnostics.len() - errors;
+        let count = |severity| {
+            self.diagnostics
+                .iter()
+                .filter(|d| d.severity == severity)
+                .count()
+        };
+        self.summary.blocking_issues = count(Severity::Error);
+        self.summary.warnings = count(Severity::Warning);
+        self.summary.suggestions = count(Severity::Suggestion);
     }
 
     pub fn has_blocking_issues(&self) -> bool {

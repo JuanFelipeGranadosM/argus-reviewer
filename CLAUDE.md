@@ -52,7 +52,8 @@ Fase actual: **Fase 1 (Base, ProjectArena, CST y Lexer/Parser con pruebas de rou
 No avances a la Fase 2 hasta cumplir su criterio de aceptación.
 
 Hecho: lexers de Python y JS/TS (D11), esqueleto estructural (D13), `argus scan` con reglas de presupuestos,
-tipado y seguridad, y `argus diff` incremental frente a git (D14). Pendiente en la Fase 1: CST red-green y parsers de Python y JS/TS con recuperación de
+tipado y seguridad, `argus diff` incremental frente a git (D14) y niveles contrato/aviso/sugerencia
+ajustables por proyecto (D15). Pendiente en la Fase 1: CST red-green y parsers de Python y JS/TS con recuperación de
 errores, que sustituirán al esqueleto por dentro sin cambiar las reglas.
 
 ## Contrato de `argus scan`
@@ -60,5 +61,8 @@ errores, que sustituirán al esqueleto por dentro sin cambiar las reglas.
   (`ARGUS-<ÁREA>-<NNN>`) nunca se reutilizan. La salida debe ser determinista (lo cubre `tests/scan_tests.rs`).
 - `argus diff` empareja con la base por `Diagnostic::metric` (`src/scan/baseline.rs`): una regla nueva que
   mida una magnitud debe fijarla con `.with_metric(..)` para que empeorar un problema previo se informe.
+- Una regla nueva se registra en `CATALOG` (`src/rules/mod.rs`) para que `[rules]` la acepte. Si es de estilo
+  y hay varias escuelas válidas, es `Severity::Suggestion` y pide la convención del propio código (D15).
+  Si puede, trae la sustitución escrita en `agent_action.instruction` y solo se emite cuando es segura (D16).
 - Antes de dar por buena una regla nueva, pásala por la stdlib de CPython (`argus scan <Lib> --format agent`) y
   revisa los falsos positivos: es código escrito por personas y no debería marcarse en masa (ver D9).

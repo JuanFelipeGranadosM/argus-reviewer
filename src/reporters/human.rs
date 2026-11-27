@@ -5,6 +5,7 @@ use super::{Diagnostic, Report, Severity};
 const RED: &str = "\x1b[31;1m";
 const YELLOW: &str = "\x1b[33;1m";
 const CYAN: &str = "\x1b[36m";
+const BLUE: &str = "\x1b[34;1m";
 const DIM: &str = "\x1b[2m";
 const RESET: &str = "\x1b[0m";
 
@@ -41,11 +42,15 @@ pub fn render(report: &Report, color: bool) -> String {
     if summary.files_generated > 0 {
         let _ = write!(out, ", {} generados omitidos", summary.files_generated);
     }
-    let _ = writeln!(
+    let _ = write!(
         out,
         " · {} errores, {} avisos",
         summary.blocking_issues, summary.warnings
     );
+    if summary.suggestions > 0 {
+        let _ = write!(out, ", {} sugerencias", summary.suggestions);
+    }
+    out.push('\n');
     out
 }
 
@@ -53,6 +58,7 @@ fn write_diagnostic(out: &mut String, diagnostic: &Diagnostic, palette: &Palette
     let (label, code) = match diagnostic.severity {
         Severity::Error => ("error", RED),
         Severity::Warning => ("aviso", YELLOW),
+        Severity::Suggestion => ("sugerencia", BLUE),
     };
     let head = format!("{label}[{}]", diagnostic.id);
     let _ = writeln!(out, "{} {}", palette.paint(code, &head), diagnostic.rule);

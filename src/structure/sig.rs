@@ -62,6 +62,11 @@ impl<'a> Sig<'a> {
         TextRange::new(start, end.max(start))
     }
 
+    /// Texto fuente de los tokens `first..=last`, con lo que haya entre ellos.
+    pub(super) fn text_of(&self, first: usize, last: usize) -> &'a str {
+        self.span(first, last).slice(self.source)
+    }
+
     /// Texto fuente entre el final del token `a` y el inicio del token `b` (comentarios incluidos).
     pub(super) fn between(&self, a: usize, b: usize) -> &'a str {
         let (Some(a), Some(b)) = (self.tokens.get(a), self.tokens.get(b)) else {

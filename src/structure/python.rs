@@ -1,5 +1,6 @@
 //! Funciones y `except` de Python, delimitados por los `INDENT`/`DEDENT` del lexer.
 
+use super::{accumulators, idioms};
 use super::sig::Sig;
 use super::{Catch, Function, Outline, Param};
 use crate::syntax::SyntaxKind::*;
@@ -16,6 +17,8 @@ pub(super) fn outline(sig: &Sig) -> Outline {
             Some(Ident) if is_dynamic_eval(sig, i) => outline.dynamic_evals.push(sig.span(i, i)),
             _ => {}
         }
+        outline.idioms.extend(idioms::python(sig, i));
+        outline.accumulators.extend(accumulators::python::find(sig, i));
     }
     outline
 }
