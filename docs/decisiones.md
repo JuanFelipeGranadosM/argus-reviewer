@@ -117,3 +117,54 @@ sin seguimiento que no ignora `.gitignore`. Con `--base main` cubre todos los co
   previos se cuentan pero no se listan. Fuera de un repositorio git es un fallo de la herramienta (código 2).
 - **Coste**: en GO-Asset, 83 archivos cambiados frente a `HEAD` dan 39 diagnósticos (21 KB) en lugar de los
   del proyecto entero, en 0,75 s con el binario de depuración (225 ms de ellos son de git).
+
+## D15 — Tres niveles: contratos, avisos y sugerencias, y cada proyecto ajusta los suyos
+No todas las formas de programar son iguales, y las guías se contradicen entre sí: la de Google para
+TypeScript prohíbe `export default` y los campos `#private`, y Next.js exige `export default` en sus páginas.
+PEP 8 admite `mixedCase` donde ya domina y dice que la consistencia dentro de un proyecto (y aún más dentro
+de un módulo) importa más que la guía. Un arnés que impusiera una sola escuela marcaría en masa código
+correcto. Por eso cada regla está en uno de tres niveles:
+- **Contrato (`error`, bloquea)**: defectos objetivos en los que coinciden PEP 8, el manual de TypeScript y
+  la guía de Google: presupuestos de tamaño y complejidad, capturas vacías, `eval`, `any`, `debugger`.
+- **Aviso (`warning`)**: casi siempre un error, aunque a veces es deliberado: `== None`, `==` laxo (salvo
+  `== null`, que las guías admiten para `null` y `undefined` a la vez), `var`, funciones públicas sin anotar.
+- **Sugerencia (`suggestion`, nunca bloquea)**: cuestiones de estilo con varias escuelas válidas. No imponen
+  una convención: piden la del propio código. `ARGUS-STYLE-001` deduce la convención de nombres de cada
+  archivo (al menos 5 funciones y un 80 % en `snake_case` o `camelCase`) y señala las que se desvían, que
+  es justo el error típico de un agente: escribir en su estilo por defecto y no en el del proyecto. Una sola
+  palabra, `PascalCase` (clases, componentes de React) y nombres de framework (`setUp`) no cuentan.
+
+Cada equipo ajusta los niveles en `.argus.toml`: `[rules]` apaga, suaviza o endurece cualquier regla por su
+ID (un ID inexistente es un error de configuración), y `[style]` fija la convención de nombres del proyecto
+(`snake_case`, `camelCase`, `auto` u `off`), que entonces se exige en todos los archivos, también en los
+nuevos.
+
+En `--format agent` las sugerencias llegan con `severity: "suggestion"` y se cuentan en
+`summary.suggestions`; `warnings` cuenta solo los avisos. Validación:
+- Stdlib de CPython (3544 archivos): `== None` en 27 archivos, casi todos paquetes de terceros. `lambda`
+  asignada en 56. STYLE-001 en 73 (un 2 %), todos mezclas reales, como los alias `camelCase` de
+  `threading` o de `bs4`.
+- GO-Asset: ningún hallazgo nuevo; es TypeScript estricto y consistente.
+
+## D16 — Sugerencias que traen la solución escrita: bucles acumuladores
+Una sugerencia que solo dice "esto se podría escribir mejor" obliga al agente a releer el código y a
+decidir, que es lo que Argus quiere ahorrarle. `ARGUS-STYLE-002` reconoce el bucle que solo llena una
+colección recién creada y entrega la expresión equivalente ya escrita, con las líneas que sustituye:
+`r = [x * 2 for x in xs]` (también conjuntos, diccionarios y la copia `list(xs)`) o
+`const r = xs.filter((x) => x).map((x) => f(x));`. El agente la aplica en un turno.
+
+Solo se sugiere cuando la reescritura conserva el comportamiento:
+- La colección se crea vacía (`[]`, `{}`, `set()`, `list()`, `dict()`) justo antes del bucle, y el cuerpo
+  es una única inserción (`append`, `add`, `d[k] = v`, `push` de un solo argumento), como mucho bajo un
+  `if` sin `else`. No puede haber `continue` ni más sentencias, ni un `for ... else`.
+- Nada de lo que se evalúa nombra la colección (`r.append(len(r))`) ni usa `await` o `yield`.
+- Python: la variable del bucle no se lee después (sobrevive a un `for` pero no a una comprensión), ni la
+  condición ni el valor usan `locals()`, `vars()` o `super()`, y el bucle no está en el cuerpo de una
+  clase, donde una comprensión no ve los atributos.
+- El resultado cabe en una línea: 88 caracteres en Python, 100 en JS/TS. Si no cabe, el bucle es más claro.
+
+Si el bucle tenía comentarios, la instrucción pide conservarlos. En JS/TS, si no se sabe que el origen es un
+array (`Object.entries(...)`, `Array.from(...)`), avisa de que `map` y `filter` necesitan uno. Validación:
+- Stdlib de CPython: 128 sugerencias en 84 archivos; todas las revisadas son reescrituras correctas.
+- GO-Asset: ninguna, y es correcto. Sus bucles con `[]` previo usan `continue`, varias sentencias o
+  `await`, o leen la colección.

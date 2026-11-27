@@ -1,7 +1,7 @@
 //! Funciones de JavaScript/TypeScript: declaraciones y expresiones `function`, flechas y métodos de
 //! clases u objetos.
 
-use super::js_facts;
+use super::{accumulators, idioms, js_facts};
 use super::sig::Sig;
 use super::{Function, Outline, Param};
 use crate::syntax::SyntaxKind::{self, *};
@@ -21,6 +21,8 @@ pub(super) fn outline(sig: &Sig, typescript: bool) -> Outline {
         };
         outline.functions.extend(function);
         js_facts::collect(sig, i, typescript, &mut outline);
+        outline.idioms.extend(idioms::javascript(sig, i));
+        outline.accumulators.extend(accumulators::javascript::find(sig, i));
     }
     outline
 }

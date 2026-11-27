@@ -2,6 +2,7 @@
 //! y se ignoran; dentro de las demás una clave desconocida es un error. En `typing` y `security` se
 //! aceptan todas las claves de la especificación aunque alguna aún no tenga regla.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -21,6 +22,8 @@ pub enum ConfigError {
         path: PathBuf,
         source: Box<toml::de::Error>,
     },
+    #[error("{path}: `[rules]` nombra una regla que no existe: {id}")]
+    UnknownRule { path: PathBuf, id: String },
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -30,6 +33,41 @@ pub struct Config {
     pub budgets: Budgets,
     pub typing: Typing,
     pub security: Security,
+    pub style: Style,
+    /// Nivel de cada regla por ID (`"ARGUS-IDIOM-002" = "off"`): cada equipo apaga, suaviza o
+    /// endurece las reglas que no encajan con su forma de programar.
+    pub rules: BTreeMap<String, Level>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Level {
+    Off,
+    Suggestion,
+    Warning,
+    Error,
+}
+
+/// Convención de nombres de funciones. `auto` la deduce de cada archivo (la consistencia dentro de un
+/// módulo es lo que más importa, PEP 8); una convención explícita se exige en todo el proyecto.
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Deserialize)]
+pub enum Naming {
+    #[default]
+    #[serde(rename = "auto")]
+    Auto,
+    #[serde(rename = "snake_case")]
+    SnakeCase,
+    #[serde(rename = "camelCase")]
+    CamelCase,
+    #[serde(rename = "off")]
+    Off,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Style {
+    pub python_function_naming: Naming,
+    pub js_function_naming: Naming,
 }
 
 /// Siempre excluidos, se configure lo que se configure: analizar dependencias o artefactos de build
@@ -136,10 +174,17 @@ impl Default for Security {
 
 impl Config {
     pub fn parse(text: &str, path: &Path) -> Result<Self, ConfigError> {
-        toml::from_str(text).map_err(|source| ConfigError::Invalid {
+        let config: Self = toml::from_str(text).map_err(|source| ConfigError::Invalid {
             path: path.to_path_buf(),
             source: Box::new(source),
-        })
+        })?;
+        match config.rules.keys().find(|id| !crate::rules::is_known(id)) {
+            Some(id) => Err(ConfigError::UnknownRule {
+                path: path.to_path_buf(),
+                id: id.clone(),
+            }),
+            None => Ok(config),
+        }
     }
 
     pub fn load(path: &Path) -> Result<Self, ConfigError> {
@@ -200,6 +245,17 @@ forbid_dynamic_eval = false
         assert!(config.typing.require_python_param_types);
         assert!(!config.security.forbid_dynamic_eval);
         assert!(config.security.forbid_empty_catch);
+    }
+
+    #[test]
+    fn rule_levels_and_style_are_read_and_unknown_ids_rejected() {
+        let text = "[rules]\n\"ARGUS-IDIOM-002\" = \"off\"\n[style]\njs_function_naming = \"camelCase\"\n";
+        let config = Config::parse(text, Path::new("t")).unwrap();
+        assert_eq!(config.rules.get("ARGUS-IDIOM-002"), Some(&Level::Off));
+        assert_eq!(config.style.js_function_naming, Naming::CamelCase);
+        assert_eq!(config.style.python_function_naming, Naming::Auto);
+        let typo = Config::parse("[rules]\n\"ARGUS-IDIOM-999\" = \"off\"\n", Path::new("t"));
+        assert!(matches!(typo, Err(ConfigError::UnknownRule { .. })));
     }
 
     #[test]

@@ -1,15 +1,18 @@
 //! Motor de reglas. Cada regla tiene un ID estable (`ARGUS-<ÁREA>-<NNN>`) que los agentes y las
 //! supresiones pueden referenciar; un ID publicado nunca se reutiliza para otra regla.
 
+mod accumulators;
 mod bloat;
 mod comments;
 mod functions;
+mod idioms;
+mod naming;
 mod safety;
 mod typing;
 mod typing_gaps;
 
 use crate::arena::Language;
-use crate::config::{Budgets, Config};
+use crate::config::{Budgets, Config, Level};
 use crate::lexer::comments::{classify_js, classify_python, CommentKind};
 use crate::lexer::Lexed;
 use crate::reporters::{AgentAction, Diagnostic, Severity};
@@ -33,6 +36,50 @@ pub const UNREADABLE_FILE: Rule = Rule {
     name: "unreadable-file",
     severity: Severity::Warning,
 };
+
+/// Todas las reglas publicadas: `[rules]` solo admite estos IDs.
+const CATALOG: &[Rule] = &[
+    SYNTAX_ERROR,
+    UNREADABLE_FILE,
+    bloat::FILE_TOO_LONG,
+    functions::FUNCTION_TOO_LONG,
+    functions::TOO_MANY_PARAMETERS,
+    functions::HIGH_COMPLEXITY,
+    comments::COMMENT_SOUP,
+    typing_gaps::BARE_SUPPRESSION,
+    typing::EXPLICIT_ANY,
+    typing::MISSING_ANNOTATIONS,
+    safety::EMPTY_CATCH,
+    safety::DYNAMIC_EVAL,
+    idioms::NONE_EQUALITY,
+    idioms::LOOSE_EQUALITY,
+    idioms::VAR_DECLARATION,
+    idioms::DEBUGGER_STATEMENT,
+    idioms::LAMBDA_ASSIGNMENT,
+    naming::NAMING_INCONSISTENCY,
+    accumulators::ACCUMULATOR_LOOP,
+];
+
+pub fn is_known(id: &str) -> bool {
+    CATALOG.iter().any(|rule| rule.id == id)
+}
+
+/// Aplica los niveles de `[rules]`: quita las reglas apagadas y cambia la severidad del resto.
+pub fn apply_levels(config: &Config, diagnostics: &mut Vec<Diagnostic>) {
+    if config.rules.is_empty() {
+        return;
+    }
+    diagnostics.retain_mut(|d| {
+        d.severity = match config.rules.get(d.id) {
+            None => return true,
+            Some(Level::Off) => return false,
+            Some(Level::Suggestion) => Severity::Suggestion,
+            Some(Level::Warning) => Severity::Warning,
+            Some(Level::Error) => Severity::Error,
+        };
+        true
+    });
+}
 
 impl Rule {
     pub fn diagnostic(
@@ -158,6 +205,10 @@ pub fn check(ctx: &FileContext) -> Vec<Diagnostic> {
     functions::check(ctx, &mut out);
     typing::check(ctx, &mut out);
     safety::check(ctx, &mut out);
+    idioms::check(ctx, &mut out);
+    naming::check(ctx, &mut out);
+    accumulators::check(ctx, &mut out);
+    apply_levels(ctx.config, &mut out);
     out
 }
 
