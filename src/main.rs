@@ -2,8 +2,9 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use argus_reviewer::arena::Language;
 use argus_reviewer::config::Config;
-use argus_reviewer::lexer::python;
+use argus_reviewer::lexer::lex_file;
 use argus_reviewer::reporters::{agent, human};
 use argus_reviewer::scan::scan;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -35,7 +36,7 @@ enum Command {
         #[arg(long)]
         config: Option<PathBuf>,
     },
-    /// Vuelca los tokens de un archivo Python (herramienta de desarrollo del lexer).
+    /// Vuelca los tokens de un archivo (herramienta de desarrollo de los lexers).
     #[command(hide = true)]
     Tokens { path: PathBuf },
 }
@@ -95,7 +96,10 @@ fn dump_tokens(path: &Path) -> ExitCode {
         Ok(source) => source,
         Err(err) => return tool_failure(format!("no se pudo leer {}: {err}", path.display())),
     };
-    let lexed = match python::lex(&source) {
+    let Some(language) = Language::from_path(path) else {
+        return tool_failure(format!("{}: extensión no soportada", path.display()));
+    };
+    let lexed = match lex_file(&source, language, path) {
         Ok(lexed) => lexed,
         Err(err) => return tool_failure(format!("{}: {err}", path.display())),
     };

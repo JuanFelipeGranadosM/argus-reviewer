@@ -29,10 +29,14 @@ pub fn render(report: &Report, color: bool) -> String {
         write_diagnostic(&mut out, diagnostic, &palette);
     }
     let summary = &report.summary;
+    let _ = write!(out, "{} archivos analizados", summary.files_scanned);
+    if summary.files_generated > 0 {
+        let _ = write!(out, ", {} generados omitidos", summary.files_generated);
+    }
     let _ = writeln!(
         out,
-        "{} archivos analizados, {} sin soporte aún · {} errores, {} avisos",
-        summary.files_scanned, summary.files_unsupported, summary.blocking_issues, summary.warnings
+        " · {} errores, {} avisos",
+        summary.blocking_issues, summary.warnings
     );
     out
 }

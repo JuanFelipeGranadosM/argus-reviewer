@@ -54,3 +54,49 @@ Sin tablas Unicode (`unicode-ident` no está entre las dependencias permitidas),
 identificador cualquier carácter no ASCII que no sea espacio. El código Python válido nunca da error (marcas
 combinantes, selectores de variante, `℘`, letras matemáticas). A cambio, un identificador inválido como `€` no
 se detecta en el lexer: argus no es un compilador y prioriza no dar falsos positivos sobre código válido.
+
+## D11 — Lexer JS/TS con heurísticas de contexto, sin parser
+Sin gramática no se sabe si `/` abre una regex ni si `<` abre JSX. Se decide por el token significativo
+anterior, como los escáneres clásicos de JS:
+- `/` abre una regex salvo tras algo que cierra una expresión (identificador, literal, `)`, `]`, `}`, `++`,
+  `this`, ...). Excepciones: una palabra reservada tras `.` es un nombre de propiedad (`x.default / 2`); la `)`
+  de `if`/`while`/`for`/`with` abre una sentencia (`if (x) /re/.test(y)`); un `!` tras una expresión es la
+  aserción no nula de TypeScript (`alto! / 12`); `yield` y `await` van seguidos de una expresión.
+- `<` abre JSX solo donde cabe una expresión y fuera de `.ts`/`.mts`/`.cts`. En `.tsx` se reconocen las listas
+  de parámetros de tipo (`<T,>`, `<T extends U>`, `<T = V>`) para no confundirlas con etiquetas.
+- Los `>` se emiten sueltos: en `Array<Array<T>>` cada uno cierra un nivel de genéricos, y el parser recompone
+  `>>`, `>=` o `>>>=` cuando no hay trivia entre ellos.
+- Las plantillas se emiten por tramos (`TemplateHead`/`Middle`/`Tail`) y el código de sus `${...}` se lexea
+  como código normal, con una pila de contextos que también gobierna las llaves de JSX.
+
+Queda ambigua la `}` de bloque seguida de `/` (`}\n/re/.test(x)`): se trata como división, que es lo habitual
+tras un objeto literal. Validado con `scripts/oracle_typescript.mjs` (comentarios, regex, plantillas y JsxText
+contra el parser de TypeScript) sobre GO-Asset y su `node_modules`: 24.119 archivos con 0 discrepancias, y
+round-trip sin errores sobre 49.100 archivos (624 MB, incluidos los worktrees).
+
+## D12 — Los archivos minificados o generados no se auditan
+Un bundle copiado a `assets/` (p. ej. por Capacitor) no lo escribió una persona ni un agente; marcarlo como
+`file-too-long` es ruido. Si un archivo de 4 KiB o más tiene una media de más de 300 bytes por línea (el código
+escrito a mano ronda los 30-40), se omite y se cuenta en `summary.files_generated`. En la stdlib de CPython solo
+omite dos tablas generadas de `site-packages`.
+
+## D13 — Esqueleto estructural antes que la gramática completa
+El objetivo de Argus es que el agente no tenga que leer el proyecto: reciba diagnósticos compactos y no
+gaste ventana de contexto ni cuota. Por eso las reglas por función no esperan al parser completo. Una primera
+capa (`src/structure/`) reconoce sobre los tokens las funciones (nombre, parámetros, anotaciones, cuerpo,
+complejidad), los bloques que capturan errores, `eval`/`exec`/`new Function` y el `any` de TypeScript. El
+parser CST la sustituirá por dentro sin cambiar las reglas. El reconocimiento es conservador: ante una forma
+que no entiende, no inventa una función.
+- **Longitud de función en líneas propias.** Las líneas interiores de las funciones anidadas no cuentan para
+  la que las contiene. Contar todo marcaba cada `describe(...)` de los tests de GO-Asset (100 hallazgos, 26
+  de ellos callbacks de prueba). Con líneas propias quedan 45, todos funciones que conviene dividir.
+- **Complejidad ciclomática**: 1 más cada `if`, bucle, `case`, `catch`/`except`, `&&`/`||`/`??` (también
+  `and`/`or`) y ternario propios. Los de las funciones anidadas van a la anidada.
+- **Captura vacía**: en JS/TS, `catch {}` y `.catch(() => {})` sin nada dentro; un comentario cuenta como
+  explicación. En Python solo se marca el `except:` o `except Exception:` cuyo cuerpo es `pass`/`...` sin
+  comentario: ignorar una excepción concreta (`except ImportError: pass`) es una decisión, no un descuido.
+- **`any` explícito** solo en posición de tipo (`: any`, `as any`, `<any>`, `| any`, `= any`, `=> any`); un
+  nombre `any` no se marca. Un diagnóstico por archivo con todas las líneas, para no inflar el JSON.
+- **Anotaciones de Python** (aviso, un diagnóstico por archivo): solo funciones públicas no anidadas, sin
+  `self`/`cls`, sin las pruebas `test*` y sin exigir retorno a `__init__`. La stdlib de CPython no sirve de
+  referencia de falsos positivos para esta regla: no se anota por diseño (los tipos están en typeshed).

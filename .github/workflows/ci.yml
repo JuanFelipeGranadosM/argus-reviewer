@@ -52,3 +52,27 @@ jobs:
           cargo build
           ARGUS_ROUNDTRIP_DIR="$STDLIB" cargo test --test lexer_parser_tests -- --ignored --nocapture
           python -I scripts/oracle_tokenize.py target/debug/argus "$STDLIB"
+
+  js-corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Corpus de paquetes npm fijados
+        run: |
+          mkdir -p "$RUNNER_TEMP/corpus"
+          cd "$RUNNER_TEMP/corpus"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund --ignore-scripts \
+            typescript@5.8.3 zod@3.25.76 tailwindcss@3.4.17 react-dom@19.1.0 \
+            rollup@4.44.0 postcss@8.5.6 express@4.21.2
+      - name: Round-trip y oráculo contra el parser de TypeScript
+        run: |
+          CORPUS="$RUNNER_TEMP/corpus/node_modules"
+          cargo build
+          ARGUS_JS_ROUNDTRIP_DIR="$CORPUS" cargo test --test js_lexer_tests -- --ignored --nocapture
+          node scripts/oracle_typescript.mjs "$CORPUS/typescript/lib/typescript.js" target/debug/argus "$CORPUS"

@@ -6,14 +6,27 @@
 
 pub mod comments;
 mod cursor;
+pub mod javascript;
+mod numbers;
 pub mod python;
 
+use std::path::Path;
+
+use crate::arena::Language;
 use crate::syntax::{TextRange, Token};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum LexErrorKind {
     #[error("cadena sin cerrar")]
     UnterminatedString,
+    #[error("comentario de bloque sin cerrar")]
+    UnterminatedComment,
+    #[error("expresión regular sin cerrar")]
+    UnterminatedRegex,
+    #[error("plantilla (template literal) sin cerrar")]
+    UnterminatedTemplate,
+    #[error("elemento JSX sin cerrar")]
+    UnterminatedJsx,
     #[error("carácter inesperado")]
     UnexpectedChar,
     #[error("la desindentación no coincide con ningún nivel de indentación anterior")]
@@ -38,6 +51,16 @@ pub struct Lexed {
 pub enum SourceError {
     #[error("el archivo ocupa {0} bytes; el máximo admitido es 4 GiB")]
     TooLarge(usize),
+}
+
+/// Lexea `source` con el lexer de `language`; `path` decide el dialecto (JSX o no) en JS/TS.
+pub fn lex_file(source: &str, language: Language, path: &Path) -> Result<Lexed, SourceError> {
+    match language {
+        Language::Python => python::lex(source),
+        Language::JavaScript | Language::TypeScript => {
+            javascript::lex(source, javascript::Dialect::from_path(path))
+        }
+    }
 }
 
 fn check_size(source: &str) -> Result<(), SourceError> {

@@ -42,6 +42,11 @@ impl AgentAction {
         self.lines = lines;
         self
     }
+
+    pub fn with_symbol(mut self, symbol: Option<String>) -> Self {
+        self.target_symbol = symbol;
+        self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -60,8 +65,10 @@ pub struct Diagnostic {
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct Summary {
     pub files_scanned: usize,
-    /// Archivos de lenguajes reconocidos cuyo análisis aún no está implementado (JS/TS en esta versión).
+    /// Archivos de lenguajes reconocidos cuyo análisis no está implementado (hoy ninguno).
     pub files_unsupported: usize,
+    /// Archivos minificados o generados que se omiten: no los escribió una persona ni un agente.
+    pub files_generated: usize,
     pub blocking_issues: usize,
     pub warnings: usize,
 }

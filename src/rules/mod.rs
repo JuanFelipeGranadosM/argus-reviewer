@@ -3,12 +3,17 @@
 
 mod bloat;
 mod comments;
+mod functions;
+mod safety;
+mod typing;
 mod typing_gaps;
 
-use crate::config::Budgets;
-use crate::lexer::comments::{classify_python, CommentKind};
+use crate::arena::Language;
+use crate::config::{Budgets, Config};
+use crate::lexer::comments::{classify_js, classify_python, CommentKind};
 use crate::lexer::Lexed;
 use crate::reporters::{AgentAction, Diagnostic, Severity};
+use crate::structure::{self, Outline};
 use crate::syntax::{LineIndex, SyntaxKind, TextRange};
 
 pub struct Rule {
@@ -61,15 +66,29 @@ pub struct ClassifiedComment<'a> {
 /// Todo lo que una regla necesita saber de un archivo, calculado una sola vez.
 pub struct FileContext<'a> {
     pub file: &'a str,
+    pub source: &'a str,
     pub lexed: &'a Lexed,
+    pub language: Language,
     pub lines: LineIndex,
     pub comments: Vec<ClassifiedComment<'a>>,
+    pub outline: Outline,
     pub budgets: &'a Budgets,
+    pub config: &'a Config,
 }
 
 impl<'a> FileContext<'a> {
-    pub fn python(file: &'a str, source: &'a str, lexed: &'a Lexed, budgets: &'a Budgets) -> Self {
+    pub fn new(
+        file: &'a str,
+        source: &'a str,
+        lexed: &'a Lexed,
+        language: Language,
+        config: &'a Config,
+    ) -> Self {
         let lines = LineIndex::new(source);
+        let classify = match language {
+            Language::Python => classify_python,
+            Language::JavaScript | Language::TypeScript => classify_js,
+        };
         let mut comments = Vec::new();
         let mut in_header = true;
         for token in &lexed.tokens {
@@ -81,7 +100,7 @@ impl<'a> FileContext<'a> {
                 comments.push(ClassifiedComment {
                     text,
                     line,
-                    kind: classify_python(text, in_header),
+                    kind: classify(text, in_header),
                     own_line: before.trim().is_empty(),
                 });
             } else if !token.kind.is_trivia() {
@@ -90,11 +109,22 @@ impl<'a> FileContext<'a> {
         }
         Self {
             file,
+            source,
             lexed,
+            language,
             lines,
             comments,
-            budgets,
+            outline: structure::outline(source, lexed, language),
+            budgets: &config.budgets,
+            config,
         }
+    }
+
+    /// Líneas (primera y última) que ocupa un rango.
+    pub fn line_span(&self, range: TextRange) -> (u32, u32) {
+        let start = self.lines.line(range.start);
+        let end = self.lines.line(range.end.saturating_sub(1)).max(start);
+        (start, end)
     }
 
     /// Líneas que contienen al menos un token significativo (las cadenas multilínea cuentan entera).
@@ -119,11 +149,14 @@ impl<'a> FileContext<'a> {
     }
 }
 
-pub fn check_python(ctx: &FileContext) -> Vec<Diagnostic> {
+pub fn check(ctx: &FileContext) -> Vec<Diagnostic> {
     let mut out = syntax_errors(ctx);
     bloat::check(ctx, &mut out);
     comments::check(ctx, &mut out);
     typing_gaps::check(ctx, &mut out);
+    functions::check(ctx, &mut out);
+    typing::check(ctx, &mut out);
+    safety::check(ctx, &mut out);
     out
 }
 

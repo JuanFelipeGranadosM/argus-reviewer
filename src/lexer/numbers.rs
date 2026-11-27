@@ -1,4 +1,7 @@
-use crate::lexer::cursor::Cursor;
+//! Literales numéricos comunes a Python y JS: prefijos `0x`/`0o`/`0b`, separadores `_`, parte
+//! decimal y exponente. Cada lenguaje añade su sufijo (`j` imaginario en Python, `n` BigInt en JS).
+
+use super::cursor::Cursor;
 use crate::syntax::SyntaxKind;
 
 fn is_digit_part(c: char) -> bool {
@@ -6,7 +9,7 @@ fn is_digit_part(c: char) -> bool {
 }
 
 /// Precondición: el cursor está en un dígito, o en `.` seguido de dígito.
-pub(super) fn lex_number(cur: &mut Cursor) -> SyntaxKind {
+pub(crate) fn scan_number(cur: &mut Cursor) -> SyntaxKind {
     let radix_prefix = cur.first() == Some('0')
         && cur
             .second()
@@ -30,9 +33,6 @@ pub(super) fn lex_number(cur: &mut Cursor) -> SyntaxKind {
         }
         cur.eat_while(is_digit_part);
         kind = SyntaxKind::Float;
-    }
-    if cur.eat('j') || cur.eat('J') {
-        kind = SyntaxKind::Imaginary;
     }
     kind
 }

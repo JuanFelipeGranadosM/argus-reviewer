@@ -41,14 +41,19 @@ de análisis estático, inferencia estructural de tipos y refactorización autom
   (ej. la stdlib en `%LOCALAPPDATA%\Python\pythoncore-3.14-64\Lib`).
 - Oráculo contra CPython: `python -I scripts/oracle_tokenize.py target/debug/argus.exe <carpeta>` compara
   NEWLINE/INDENT/DEDENT/COMMENT por archivo con `tokenize`. Debe dar 0 discrepancias.
+- JS/TS: `ARGUS_JS_ROUNDTRIP_DIR=<carpeta> cargo test --test js_lexer_tests -- --ignored --nocapture` y
+  `node scripts/oracle_typescript.mjs <typescript.js> target/debug/argus.exe <carpeta>`, que compara comentarios,
+  regex, plantillas y JsxText con el parser de TypeScript. Debe dar 0 discrepancias. Hay un `typescript.js` en
+  `Documents/GO-Asset/node_modules/typescript/lib` (solo lectura: GO-Asset no se modifica).
 
 ## Orden de Ejecución
 Roadmap de 6 fases de la especificación, con los ajustes de `docs/decisiones.md`.
 Fase actual: **Fase 1 (Base, ProjectArena, CST y Lexer/Parser con pruebas de round-trip)**.
 No avances a la Fase 2 hasta cumplir su criterio de aceptación.
 
-Hecho: lexer de Python y `argus scan` con reglas de tokens (D3). Pendiente en la Fase 1: CST red-green, parser de
-Python con recuperación de errores y lexer/parser de JS/TS.
+Hecho: lexers de Python y JS/TS (D11), esqueleto estructural (D13) y `argus scan` con reglas de presupuestos,
+tipado y seguridad. Pendiente en la Fase 1: CST red-green y parsers de Python y JS/TS con recuperación de
+errores, que sustituirán al esqueleto por dentro sin cambiar las reglas.
 
 ## Contrato de `argus scan`
 - El JSON de `--format agent` (`src/reporters/mod.rs`) es público: solo se añaden campos. Los IDs de regla
