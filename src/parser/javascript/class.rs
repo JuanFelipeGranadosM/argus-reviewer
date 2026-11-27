@@ -1,7 +1,9 @@
 //! Clases: decoradores, herencia, `implements` y miembros con sus modificadores.
 
 use super::decl::{decorator, signature};
-use super::{allow_in, annotation, block, expr, is_modifier, is_name, primary, property_name, semi};
+use super::{
+    allow_in, annotation, block, expr, is_modifier, is_name, primary, property_name, semi,
+};
 use super::{types, Completed, Marker, Parser};
 use crate::syntax::SyntaxKind::*;
 

@@ -49,7 +49,10 @@ pub fn build(root: SyntaxKind, tokens: Vec<Token>, mut events: Vec<Event>) -> Cs
     };
     let mut kinds = Vec::new();
     for i in 0..events.len() {
-        let Some(event) = events.get_mut(i).map(|e| std::mem::replace(e, Event::Tombstone)) else {
+        let Some(event) = events
+            .get_mut(i)
+            .map(|e| std::mem::replace(e, Event::Tombstone))
+        else {
             continue;
         };
         match event {

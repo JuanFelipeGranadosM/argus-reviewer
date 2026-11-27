@@ -187,9 +187,8 @@ fn postfix(p: &mut Parser) -> Option<Completed> {
 /// Funciones flecha. `x =>` y `(…) =>` se ven por el token tras el nombre o el paréntesis de cierre;
 /// con tipos (`(a: T): R =>`, `<T>(a) =>`) se intenta la cabecera y se deshace si no sigue `=>`.
 fn arrow(p: &mut Parser) -> Option<Completed> {
-    let is_async = p.at_word("async")
-        && matches!(p.nth(1), Ident | LParen | Lt)
-        && !p.newline_before_nth(1);
+    let is_async =
+        p.at_word("async") && matches!(p.nth(1), Ident | LParen | Lt) && !p.newline_before_nth(1);
     let at = usize::from(is_async);
     match p.nth(at) {
         Ident if p.nth(at + 1) == FatArrow => Some(arrow_function(p)),

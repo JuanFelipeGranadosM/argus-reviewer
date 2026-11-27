@@ -18,12 +18,7 @@ fn parse_as(file: &str, source: &str) -> Parsed {
 }
 
 fn rebuilt(parsed: &Parsed, source: &str) -> String {
-    parsed
-        .cst
-        .root()
-        .leaves()
-        .map(|t| t.text(source))
-        .collect()
+    parsed.cst.root().leaves().map(|t| t.text(source)).collect()
 }
 
 /// Árbol con un nodo por línea; los tokens significativos van entre comillas y la trivia se omite.
@@ -49,7 +44,9 @@ fn tree(file: &str, source: &str) -> String {
 }
 
 fn fixtures(dir: &str) -> Vec<PathBuf> {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(dir);
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures")
+        .join(dir);
     let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
         .unwrap()
         .map(|e| e.unwrap().path())
@@ -74,10 +71,16 @@ fn every_prefix_of_every_fixture_parses_losslessly() {
     for path in fixtures("python").into_iter().chain(fixtures("js")) {
         let source = std::fs::read_to_string(&path).unwrap();
         let name = path.to_str().unwrap();
-        let cuts = (0..source.len()).step_by(7).filter(|&i| source.is_char_boundary(i));
+        let cuts = (0..source.len())
+            .step_by(7)
+            .filter(|&i| source.is_char_boundary(i));
         for cut in cuts {
             let prefix = &source[..cut];
-            assert_eq!(rebuilt(&parse_as(name, prefix), prefix), prefix, "{name}:{cut}");
+            assert_eq!(
+                rebuilt(&parse_as(name, prefix), prefix),
+                prefix,
+                "{name}:{cut}"
+            );
         }
     }
 }
@@ -293,7 +296,6 @@ fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-
 /// Árbol esperado en `javascript_precedence_and_asi_build_the_right_tree`.
 const JS_TREE: &str = "SourceFile
   ExprStmt
@@ -329,9 +331,15 @@ const JS_TREE: &str = "SourceFile
 
 #[test]
 fn javascript_precedence_and_asi_build_the_right_tree() {
-    assert_eq!(tree("a.js", "a = b ? c : d >> 1 >= e
+    assert_eq!(
+        tree(
+            "a.js",
+            "a = b ? c : d >> 1 >= e
 x++
-"), JS_TREE);
+"
+        ),
+        JS_TREE
+    );
 }
 
 #[test]
@@ -375,8 +383,11 @@ let i = obj!.prop as const;
         "NonNullExpr",
         "TypeParamList",
     ] {
-        assert!(text.contains(kind), "falta {kind}:
-{text}");
+        assert!(
+            text.contains(kind),
+            "falta {kind}:
+{text}"
+        );
     }
 }
 
@@ -396,5 +407,8 @@ fn jsx_and_regex_parse_cleanly() {
 ";
     let text = tree("a.jsx", source);
     assert_eq!(text.matches("JsxElement").count(), 4, "{text}");
-    assert!(text.contains("JsxAttribute") && text.contains("TemplateExpr"), "{text}");
+    assert!(
+        text.contains("JsxAttribute") && text.contains("TemplateExpr"),
+        "{text}"
+    );
 }

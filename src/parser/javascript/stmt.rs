@@ -89,7 +89,8 @@ fn word_statement(p: &mut Parser) {
 }
 
 fn starts_let(p: &mut Parser) -> bool {
-    p.at_word("let") && (matches!(p.nth(1), LBracket | LBrace) || is_name(p.nth(1)))
+    p.at_word("let")
+        && (matches!(p.nth(1), LBracket | LBrace) || is_name(p.nth(1)))
         && !matches!(p.nth(1), KwIn | KwInstanceof)
 }
 

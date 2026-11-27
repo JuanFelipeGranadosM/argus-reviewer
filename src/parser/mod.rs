@@ -171,7 +171,10 @@ impl<'t> Parser<'t> {
     /// El token `n` empieza justo donde acaba el `n - 1`, sin trivia entre ambos.
     pub(crate) fn adjacent(&self, n: usize) -> bool {
         let at = self.pos + n;
-        match (at.checked_sub(1).and_then(|p| self.tokens.get(p)), self.tokens.get(at)) {
+        match (
+            at.checked_sub(1).and_then(|p| self.tokens.get(p)),
+            self.tokens.get(at),
+        ) {
             (Some(a), Some(b)) => a.range.end == b.range.start,
             _ => false,
         }

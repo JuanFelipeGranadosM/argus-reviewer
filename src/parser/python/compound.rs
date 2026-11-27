@@ -10,7 +10,10 @@ pub(super) fn decorated(p: &mut Parser) {
         let decorator = p.start();
         p.bump();
         expr::named_expr(p);
-        p.expect(LogicalNewline, "se esperaba el final de la línea tras el decorador");
+        p.expect(
+            LogicalNewline,
+            "se esperaba el final de la línea tras el decorador",
+        );
         decorator.complete(p, Decorator);
     }
     match p.current() {

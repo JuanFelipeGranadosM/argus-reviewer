@@ -275,7 +275,11 @@ pub(in crate::parser::python) fn arg_list(p: &mut Parser) {
 fn argument(p: &mut Parser) {
     match (p.current(), p.nth(1)) {
         (Star, _) | (DoubleStar, _) => {
-            let kind = if p.at(Star) { StarredExpr } else { DoubleStarredExpr };
+            let kind = if p.at(Star) {
+                StarredExpr
+            } else {
+                DoubleStarredExpr
+            };
             let m = p.start();
             p.bump();
             expr::expression(p);

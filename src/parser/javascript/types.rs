@@ -2,8 +2,8 @@
 //! `infer`, ...), arrays e índices, referencias genéricas, tuplas, tipos objeto y mapeados, literales
 //! y plantillas. Cada `type_` es un nodo `TypeExpr`; su estructura interna queda en tokens.
 
-pub(super) use super::object_type::object_type;
 use super::decl::params;
+pub(super) use super::object_type::object_type;
 use super::object_type::{mapped, mapped_ahead};
 use super::{is_name, name, Parser};
 use crate::syntax::SyntaxKind::*;
@@ -45,7 +45,9 @@ fn non_conditional(p: &mut Parser) {
 fn function_type_ahead(p: &mut Parser) -> bool {
     match p.current() {
         Lt | KwNew => true,
-        LParen => p.close_of(p.pos()).is_some_and(|c| p.kind_at(c + 1) == FatArrow),
+        LParen => p
+            .close_of(p.pos())
+            .is_some_and(|c| p.kind_at(c + 1) == FatArrow),
         _ => p.at_word("abstract") && p.nth(1) == KwNew,
     }
 }
@@ -105,7 +107,15 @@ fn starts_type(kind: crate::syntax::SyntaxKind) -> bool {
     is_name(kind)
         || matches!(
             kind,
-            LParen | LBracket | LBrace | String | Int | Float | Minus | TemplateNoSub | TemplateHead
+            LParen
+                | LBracket
+                | LBrace
+                | String
+                | Int
+                | Float
+                | Minus
+                | TemplateNoSub
+                | TemplateHead
         )
 }
 
@@ -210,8 +220,8 @@ fn tuple(p: &mut Parser) {
     p.bump();
     while !matches!(p.current(), RBracket | EndOfFile) {
         p.eat(Ellipsis);
-        let named = is_name(p.nth(0))
-            && (p.nth(1) == Colon || (p.nth(1) == Question && p.nth(2) == Colon));
+        let named =
+            is_name(p.nth(0)) && (p.nth(1) == Colon || (p.nth(1) == Question && p.nth(2) == Colon));
         if named {
             p.bump();
             p.eat(Question);

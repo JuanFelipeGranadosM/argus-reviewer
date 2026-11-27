@@ -10,7 +10,11 @@ const PROPERTY_MODIFIERS: &[&str] = &["get", "set", "async"];
 
 /// Expresión de lado izquierdo: una primaria (o `new`) con todos sus sufijos.
 pub(super) fn lhs(p: &mut Parser) -> Option<Completed> {
-    let mut e = if p.at(KwNew) { new_expr(p) } else { primary(p)? };
+    let mut e = if p.at(KwNew) {
+        new_expr(p)
+    } else {
+        primary(p)?
+    };
     while let Some(next) = suffix(p, e, true) {
         e = next;
     }
@@ -148,7 +152,11 @@ fn new_expr(p: &mut Parser) -> Completed {
         member_name(p);
         return m.complete(p, NewExpr);
     }
-    let callee = if p.at(KwNew) { Some(new_expr(p)) } else { primary(p) };
+    let callee = if p.at(KwNew) {
+        Some(new_expr(p))
+    } else {
+        primary(p)
+    };
     if let Some(mut callee) = callee {
         while let Some(next) = suffix(p, callee, false) {
             callee = next;
