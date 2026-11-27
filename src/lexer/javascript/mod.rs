@@ -12,6 +12,8 @@ mod punct;
 
 use std::path::Path;
 
+pub(crate) use self::jsx::looks_like_type_parameters;
+
 use self::punct::{is_ident_continue, is_ident_start, is_line_terminator, is_whitespace};
 use super::cursor::Cursor;
 use super::{check_size, LexError, LexErrorKind, Lexed, SourceError};

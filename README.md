@@ -15,6 +15,9 @@ Fase 1 en curso. Lo que funciona hoy:
   (comentarios, regex, plantillas y texto JSX) sobre un monorepo real y su `node_modules`.
 - Esqueleto estructural (funciones, parámetros, anotaciones, complejidad, capturas de errores) para Python y
   JS/TS, primera capa del parser (D13).
+- CST sin pérdida en una arena plana y parsers de Python 3.14 y de JS/TS/JSX con recuperación de errores:
+  la stdlib de CPython, GO-Asset y su `node_modules` (30.000 archivos) pasan sin errores salvo el código
+  inválido a propósito (D17).
 - `argus scan` con reglas de presupuestos, tipado y seguridad para Python y JS/TS. Los archivos minificados o generados (media de
   más de 300 bytes por línea) se omiten y se cuentan en `files_generated`.
 - `argus diff`, modo incremental: solo los problemas que introduce o empeora el cambio frente a git (D14).
