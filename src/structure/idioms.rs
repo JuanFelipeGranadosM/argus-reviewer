@@ -51,7 +51,10 @@ fn is_lambda_assignment(sig: &Sig, i: usize) -> bool {
         return false;
     };
     let statement_start = name.checked_sub(1).is_none_or(|p| {
-        matches!(sig.kind(p), Some(LogicalNewline | Indent | Dedent | Semicolon))
+        matches!(
+            sig.kind(p),
+            Some(LogicalNewline | Indent | Dedent | Semicolon)
+        )
     });
     sig.is(eq, Eq) && sig.is(name, Ident) && statement_start
 }
