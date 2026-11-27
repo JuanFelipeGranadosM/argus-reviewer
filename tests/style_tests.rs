@@ -70,7 +70,13 @@ o.debugger;
             ("ARGUS-IDIOM-004", 4),
         ]
     );
-    assert!(found("tipos.d.ts", "var z: number;\n", "ARGUS-IDIOM", &Config::default()).is_empty());
+    assert!(found(
+        "tipos.d.ts",
+        "var z: number;\n",
+        "ARGUS-IDIOM",
+        &Config::default()
+    )
+    .is_empty());
 }
 
 fn functions(names: &[&str]) -> String {
@@ -121,7 +127,13 @@ fn rewrites(file: &str, source: &str) -> Vec<(u32, u32, String)> {
     diagnostics(file, source, &Config::default())
         .into_iter()
         .filter(|d| d.id == "ARGUS-STYLE-002")
-        .map(|d| (d.line_start, d.line_end, d.agent_action.unwrap().instruction))
+        .map(|d| {
+            (
+                d.line_start,
+                d.line_end,
+                d.agent_action.unwrap().instruction,
+            )
+        })
         .collect()
 }
 
@@ -150,7 +162,11 @@ for x in xs: copia.append(x)
         [
             (1, 3, instruction(1, 3, "r = [x * 2 for x in xs]")),
             (4, 7, instruction(4, 7, "s = {x for x in xs if x > 0}")),
-            (8, 10, instruction(8, 10, "m = {k: v.strip() for k, v in d.items()}")),
+            (
+                8,
+                10,
+                instruction(8, 10, "m = {k: v.strip() for k, v in d.items()}")
+            ),
             (11, 12, instruction(11, 12, "copia: list[int] = list(xs)")),
         ]
     );

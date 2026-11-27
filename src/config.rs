@@ -249,7 +249,8 @@ forbid_dynamic_eval = false
 
     #[test]
     fn rule_levels_and_style_are_read_and_unknown_ids_rejected() {
-        let text = "[rules]\n\"ARGUS-IDIOM-002\" = \"off\"\n[style]\njs_function_naming = \"camelCase\"\n";
+        let text =
+            "[rules]\n\"ARGUS-IDIOM-002\" = \"off\"\n[style]\njs_function_naming = \"camelCase\"\n";
         let config = Config::parse(text, Path::new("t")).unwrap();
         assert_eq!(config.rules.get("ARGUS-IDIOM-002"), Some(&Level::Off));
         assert_eq!(config.style.js_function_naming, Naming::CamelCase);

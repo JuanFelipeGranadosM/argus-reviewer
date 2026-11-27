@@ -81,7 +81,12 @@ pub(super) fn check(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
 
 /// La convención que se exige y por qué; `None` si no hay ninguna clara.
 fn expected_case(setting: Naming, named: &[Named]) -> Option<(Case, String)> {
-    let fixed = |case: Case| Some((case, format!("el proyecto fija {} en `[style]`", case.label())));
+    let fixed = |case: Case| {
+        Some((
+            case,
+            format!("el proyecto fija {} en `[style]`", case.label()),
+        ))
+    };
     match setting {
         Naming::Off => None,
         Naming::SnakeCase => fixed(Case::Snake),
@@ -156,7 +161,14 @@ mod tests {
     fn cases_and_conversions() {
         assert_eq!(case_of("get_user"), Some(Case::Snake));
         assert_eq!(case_of("_getUser"), Some(Case::Camel));
-        for neutral in ["run", "Componente", "__init__", "visit_Name", "setUp", "MAX_X"] {
+        for neutral in [
+            "run",
+            "Componente",
+            "__init__",
+            "visit_Name",
+            "setUp",
+            "MAX_X",
+        ] {
             assert_eq!(case_of(neutral), None, "{neutral}");
         }
         assert_eq!(convert("_get_user_name", Case::Camel), "_getUserName");

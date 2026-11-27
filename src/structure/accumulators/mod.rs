@@ -26,9 +26,7 @@ fn piece<'a>(sig: &Sig<'a>, (first, last): Range) -> Option<&'a str> {
 /// La pieza no nombra la colección (una comprensión no puede verse a sí misma a medio construir) ni
 /// suspende la ejecución.
 fn independent(sig: &Sig, (first, last): Range, name: &str) -> bool {
-    (first..=last).all(|j| {
-        !sig.is_word(j, name) && !matches!(sig.kind(j), Some(KwAwait | KwYield))
-    })
+    (first..=last).all(|j| !sig.is_word(j, name) && !matches!(sig.kind(j), Some(KwAwait | KwYield)))
 }
 
 /// Aviso para el agente si hay comentarios entre los tokens `first..=last`: la sustitución los

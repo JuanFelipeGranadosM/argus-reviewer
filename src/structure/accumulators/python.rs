@@ -53,8 +53,13 @@ pub(in crate::structure) fn find(sig: &Sig, i: usize) -> Option<Accumulator> {
         head: piece(sig, (i, eq - 1))?,
         target: piece(sig, target)?,
         iter: piece(sig, iter)?,
-        cond: cond.map(|c| piece(sig, c)).map_or(Some(None), |p| p.map(Some))?,
-        key: item.key.map(|k| piece(sig, k)).map_or(Some(None), |p| p.map(Some))?,
+        cond: cond
+            .map(|c| piece(sig, c))
+            .map_or(Some(None), |p| p.map(Some))?,
+        key: item
+            .key
+            .map(|k| piece(sig, k))
+            .map_or(Some(None), |p| p.map(Some))?,
         value: piece(sig, item.value)?,
     };
     let replacement = pieces.comprehension(collection);
@@ -70,7 +75,13 @@ pub(in crate::structure) fn find(sig: &Sig, i: usize) -> Option<Accumulator> {
 /// La comprensión se comporta igual que el bucle: nada nombra la colección, la variable del bucle no
 /// se lee después, ni la condición ni el valor dependen del ámbito (`locals()`, `vars()`, `super()`) y
 /// el bucle no está en el cuerpo de una clase, donde una comprensión no ve los atributos.
-fn safe(sig: &Sig, (i, end): (usize, usize), name: &str, (target, iter): (Range, Range), (cond, item): (Option<Range>, &Item)) -> bool {
+fn safe(
+    sig: &Sig,
+    (i, end): (usize, usize),
+    name: &str,
+    (target, iter): (Range, Range),
+    (cond, item): (Option<Range>, &Item),
+) -> bool {
     let inner = [cond, item.key, Some(item.value)];
     let all = [Some(target), Some(iter)].into_iter().chain(inner);
     all.flatten().all(|r| independent(sig, r, name))
@@ -81,7 +92,10 @@ fn safe(sig: &Sig, (i, end): (usize, usize), name: &str, (target, iter): (Range,
 
 fn scope_sensitive(sig: &Sig, (first, last): Range) -> bool {
     (first..=last).any(|j| {
-        ["locals", "vars", "super"].iter().any(|w| sig.is_word(j, w)) && sig.is(j + 1, LParen)
+        ["locals", "vars", "super"]
+            .iter()
+            .any(|w| sig.is_word(j, w))
+            && sig.is(j + 1, LParen)
     })
 }
 
@@ -137,12 +151,15 @@ fn suite(sig: &Sig, colon: usize) -> Option<(usize, usize)> {
     let last = sig.len().checked_sub(1)?;
     if sig.is(colon + 1, LogicalNewline) {
         let first = colon + 2;
-        let end = sig.is(first, Indent).then(|| statement_end(sig, first + 1))??;
+        let end = sig
+            .is(first, Indent)
+            .then(|| statement_end(sig, first + 1))??;
         return sig.is(end, Dedent).then_some((first + 1, end + 1));
     }
     let first = colon + 1;
     let newline = sig.find_top_level(first, last, |k| k == LogicalNewline || k == Semicolon)?;
-    sig.is(newline, LogicalNewline).then_some((first, newline + 1))
+    sig.is(newline, LogicalNewline)
+        .then_some((first, newline + 1))
 }
 
 /// Índice que sigue a la sentencia simple o al `if` (sin `elif`/`else`) que empieza en `first`.
@@ -222,7 +239,9 @@ fn rebinds(sig: &Sig, j: usize) -> bool {
     while let Some(prev) = k.checked_sub(1) {
         match sig.kind(prev) {
             Some(KwFor) => return true,
-            Some(Ident | Comma | LParen | LBracket | RParen | RBracket) if j - prev < 16 => k = prev,
+            Some(Ident | Comma | LParen | LBracket | RParen | RBracket) if j - prev < 16 => {
+                k = prev
+            }
             _ => return false,
         }
     }
@@ -240,7 +259,9 @@ struct Pieces<'a> {
 
 impl Pieces<'_> {
     fn comprehension(&self, collection: Collection) -> std::string::String {
-        let Pieces { head, target, iter, .. } = self;
+        let Pieces {
+            head, target, iter, ..
+        } = self;
         let copy = self.cond.is_none() && self.key.is_none() && self.value == *target;
         match collection {
             Collection::List if copy => return format!("{head} = list({iter})"),

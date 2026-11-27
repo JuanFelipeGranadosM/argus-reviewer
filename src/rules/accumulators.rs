@@ -34,8 +34,8 @@ pub(super) fn check(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
             instruction.push(' ');
             instruction.push_str(caveat);
         }
-        let action = AgentAction::new("rewrite_as_expression", instruction)
-            .with_symbol(Some(name.clone()));
+        let action =
+            AgentAction::new("rewrite_as_expression", instruction).with_symbol(Some(name.clone()));
         out.push(ACCUMULATOR_LOOP.diagnostic(ctx.file, (start, end), message, Some(action)));
     }
 }

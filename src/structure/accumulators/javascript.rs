@@ -11,7 +11,12 @@ const MAX_LINE: usize = 100;
 /// Tope de tokens de la anotación de tipo de la declaración (`const r: Fila[] = []`).
 const MAX_HEAD: usize = 32;
 /// Expresiones que seguro producen un array, sobre las que `.map`/`.filter` son válidos.
-const ARRAY_SOURCES: &[&str] = &["Object.entries(", "Object.keys(", "Object.values(", "Array.from("];
+const ARRAY_SOURCES: &[&str] = &[
+    "Object.entries(",
+    "Object.keys(",
+    "Object.values(",
+    "Array.from(",
+];
 
 pub(in crate::structure) fn find(sig: &Sig, i: usize) -> Option<Accumulator> {
     let declares = sig.is(i, KwConst) || sig.is_word(i, "let");
@@ -20,12 +25,18 @@ pub(in crate::structure) fn find(sig: &Sig, i: usize) -> Option<Accumulator> {
     }
     let name = sig.text(i + 1);
     let eq = sig
-        .find_top_level(i + 2, i + 2 + MAX_HEAD, |k| matches!(k, Eq | Semicolon | Comma))
+        .find_top_level(i + 2, i + 2 + MAX_HEAD, |k| {
+            matches!(k, Eq | Semicolon | Comma)
+        })
         .filter(|&j| sig.is(j, Eq))?;
     if !sig.is(eq + 1, LBracket) || sig.close_of(eq + 1) != Some(eq + 2) {
         return None;
     }
-    let for_at = if sig.is(eq + 3, Semicolon) { eq + 4 } else { eq + 3 };
+    let for_at = if sig.is(eq + 3, Semicolon) {
+        eq + 4
+    } else {
+        eq + 3
+    };
     let open = for_at + 1;
     let close = sig.close_of(open).filter(|_| sig.is(for_at, KwFor))?;
     let binds = sig.is(open + 1, KwConst) || sig.is_word(open + 1, "let");
@@ -42,7 +53,11 @@ pub(in crate::structure) fn find(sig: &Sig, i: usize) -> Option<Accumulator> {
     let target = (open + 2, of_at - 1);
     let iter = (of_at + 1, close - 1);
     let ranges = [Some(target), Some(iter), cond, Some(value)];
-    if !ranges.into_iter().flatten().all(|r| independent(sig, r, name)) {
+    if !ranges
+        .into_iter()
+        .flatten()
+        .all(|r| independent(sig, r, name))
+    {
         return None;
     }
     let cond = match cond {
@@ -54,15 +69,7 @@ pub(in crate::structure) fn find(sig: &Sig, i: usize) -> Option<Accumulator> {
     let (target, value) = (piece(sig, target)?, piece(sig, value)?);
     let transforms = cond.is_some() || value != target;
     let replacement = chain(head, target, iter, cond, value);
-    let known_array = ARRAY_SOURCES.iter().any(|s| iter.starts_with(s));
-    let array_note = (transforms && !known_array).then(|| {
-        format!("Si `{iter}` no es un array (Set, Map, generador), envolverlo en `Array.from(...)`.")
-    });
-    let notes: Vec<std::string::String> = array_note
-        .into_iter()
-        .chain(comments_note(sig, (i, last), &["//", "/*"]).map(str::to_owned))
-        .collect();
-    let caveat = (!notes.is_empty()).then(|| notes.join(" "));
+    let caveat = caveat(sig, iter, transforms, (i, last));
     (replacement.chars().count() <= MAX_LINE).then(|| Accumulator {
         name: name.to_owned(),
         span: sig.span(i, last),
@@ -70,6 +77,26 @@ pub(in crate::structure) fn find(sig: &Sig, i: usize) -> Option<Accumulator> {
         collection: Collection::List,
         caveat,
     })
+}
+
+/// Advertencias de la sugerencia: `map`/`filter` piden un array y los comentarios deben conservarse.
+fn caveat(
+    sig: &Sig,
+    iter: &str,
+    transforms: bool,
+    span: (usize, usize),
+) -> Option<std::string::String> {
+    let known_array = ARRAY_SOURCES.iter().any(|s| iter.starts_with(s));
+    let array_note = (transforms && !known_array).then(|| {
+        format!(
+            "Si `{iter}` no es un array (Set, Map, generador), envolverlo en `Array.from(...)`."
+        )
+    });
+    let notes: Vec<std::string::String> = array_note
+        .into_iter()
+        .chain(comments_note(sig, span, &["//", "/*"]).map(str::to_owned))
+        .collect();
+    (!notes.is_empty()).then(|| notes.join(" "))
 }
 
 /// Cuerpo de una sola sentencia en `at` (con llaves o sin ellas): su primer token, el índice que
@@ -87,7 +114,9 @@ fn body(sig: &Sig, at: usize, name: &str) -> Option<(usize, usize, usize)> {
 /// Índice que sigue a `name.push(...)` o a un `if (...)` sin `else` que solo la contiene.
 fn statement_end(sig: &Sig, first: usize, name: &str) -> Option<usize> {
     if sig.is(first, KwIf) {
-        let cond_close = sig.close_of(first + 1).filter(|_| sig.is(first + 1, LParen))?;
+        let cond_close = sig
+            .close_of(first + 1)
+            .filter(|_| sig.is(first + 1, LParen))?;
         let (_, end, _) = body(sig, cond_close + 1, name)?;
         return (!sig.is(end, KwElse)).then_some(end);
     }
@@ -100,7 +129,13 @@ fn statement_end(sig: &Sig, first: usize, name: &str) -> Option<usize> {
 }
 
 /// `head = iter.filter(...).map(...)`, o la copia `[...iter]` si no transforma ni filtra.
-fn chain(head: &str, target: &str, iter: &str, cond: Option<&str>, value: &str) -> std::string::String {
+fn chain(
+    head: &str,
+    target: &str,
+    iter: &str,
+    cond: Option<&str>,
+    value: &str,
+) -> std::string::String {
     let param = format!("({target})");
     let result = if value.starts_with('{') {
         format!("({value})")
