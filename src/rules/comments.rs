@@ -46,6 +46,7 @@ pub(super) fn check(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
         suspect_lines.first().copied().unwrap_or(1),
         suspect_lines.last().copied().unwrap_or(1),
     );
+    let count = u32::try_from(suspect_lines.len()).unwrap_or(u32::MAX);
     let message = format!(
         "{} comentarios narrativos cortos y aislados para {code} líneas de código (ratio {ratio:.2}; máximo {max:.2}).",
         suspect_lines.len()
@@ -56,5 +57,6 @@ pub(super) fn check(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
          No tocar docstrings, directivas, licencias ni TODO/FIXME.",
     )
     .with_lines(suspect_lines);
-    out.push(COMMENT_SOUP.diagnostic(ctx.file, span, message, Some(action)));
+    let diagnostic = COMMENT_SOUP.diagnostic(ctx.file, span, message, Some(action));
+    out.push(diagnostic.with_metric(count));
 }

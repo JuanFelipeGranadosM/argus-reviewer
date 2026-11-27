@@ -6,11 +6,15 @@ pub mod human;
 
 use serde::Serialize;
 
+/// `error` bloquea (código de salida 1); `warning` señala un problema probable; `suggestion` es una
+/// recomendación de estilo con varias escuelas válidas, nunca bloquea y se puede apagar o endurecer
+/// por regla en `[rules]`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     Error,
     Warning,
+    Suggestion,
 }
 
 /// Instrucción de remediación lista para que un agente la ejecute en un solo turno.
@@ -60,6 +64,17 @@ pub struct Diagnostic {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_action: Option<AgentAction>,
+    /// Magnitud del problema (líneas, parámetros, complejidad, usos), o 0 si no tiene. No se publica:
+    /// el modo incremental la usa para saber si un problema que ya existía ha empeorado.
+    #[serde(skip)]
+    pub metric: u32,
+}
+
+impl Diagnostic {
+    pub fn with_metric(mut self, metric: u32) -> Self {
+        self.metric = metric;
+        self
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
@@ -71,6 +86,21 @@ pub struct Summary {
     pub files_generated: usize,
     pub blocking_issues: usize,
     pub warnings: usize,
+    pub suggestions: usize,
+    /// Solo en `argus diff`: contra qué se comparó y cuántos problemas previos no se listan.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub incremental: Option<Incremental>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+pub struct Incremental {
+    /// La revisión pedida (`HEAD`, `main`, ...).
+    pub base: String,
+    /// El commit con el que se comparó: el ancestro común de `base` y `HEAD`.
+    pub base_commit: String,
+    pub files_changed: usize,
+    /// Problemas que ya existían en la base en los archivos cambiados: se cuentan, no se listan.
+    pub preexisting_issues: usize,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
@@ -84,13 +114,15 @@ impl Report {
     pub fn finalize(&mut self) {
         self.diagnostics
             .sort_by(|a, b| (&a.file, a.line_start, a.id).cmp(&(&b.file, b.line_start, b.id)));
-        let errors = self
-            .diagnostics
-            .iter()
-            .filter(|d| d.severity == Severity::Error)
-            .count();
-        self.summary.blocking_issues = errors;
-        self.summary.warnings = self.diagnostics.len() - errors;
+        let count = |severity| {
+            self.diagnostics
+                .iter()
+                .filter(|d| d.severity == severity)
+                .count()
+        };
+        self.summary.blocking_issues = count(Severity::Error);
+        self.summary.warnings = count(Severity::Warning);
+        self.summary.suggestions = count(Severity::Suggestion);
     }
 
     pub fn has_blocking_issues(&self) -> bool {

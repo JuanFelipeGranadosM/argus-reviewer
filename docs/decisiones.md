@@ -100,3 +100,104 @@ que no entiende, no inventa una función.
 - **Anotaciones de Python** (aviso, un diagnóstico por archivo): solo funciones públicas no anidadas, sin
   `self`/`cls`, sin las pruebas `test*` y sin exigir retorno a `__init__`. La stdlib de CPython no sirve de
   referencia de falsos positivos para esta regla: no se anota por diseño (los tipos están en typeshed).
+
+## D14 — Modo incremental: `argus diff` lista solo lo que el cambio introduce o empeora
+Auditar el proyecto entero en cada turno devuelve al agente cientos de problemas que no causó y hace crecer
+el informe con el repositorio. `argus diff [ruta] [--base REV]` analiza solo los archivos distintos desde el
+ancestro común de `REV` (por defecto `HEAD`) y `HEAD`: el árbol de trabajo, el índice y los archivos nuevos
+sin seguimiento que no ignora `.gitignore`. Con `--base main` cubre todos los commits de la rama.
+- **Base**: cada archivo cambiado se analiza también en su versión base (`git cat-file --batch`, un solo
+  proceso para todos), con la misma ruta y configuración. Las líneas tocadas salen de `git diff -U0 -M`.
+- **Emparejamiento**: por regla y mensaje con los números sustituidos (las líneas se desplazan); las reglas
+  de un diagnóstico por archivo (BLOAT-001, SOUP-001, TYPE-002, TYPE-003) solo por regla.
+- **Nuevo o empeorado**: un diagnóstico fuera de las líneas tocadas siempre es previo. Uno tocado es nuevo
+  salvo que tenga pareja en la base con una métrica (líneas, parámetros, complejidad, usos) igual o mayor:
+  alargar una función que ya era larga se informa; tocarla sin empeorarla, no.
+- **Resumen**: `summary.incremental` (`base`, `base_commit`, `files_changed`, `preexisting_issues`). Los
+  previos se cuentan pero no se listan. Fuera de un repositorio git es un fallo de la herramienta (código 2).
+- **Coste**: en GO-Asset, 83 archivos cambiados frente a `HEAD` dan 39 diagnósticos (21 KB) en lugar de los
+  del proyecto entero, en 0,75 s con el binario de depuración (225 ms de ellos son de git).
+
+## D15 — Tres niveles: contratos, avisos y sugerencias, y cada proyecto ajusta los suyos
+No todas las formas de programar son iguales, y las guías se contradicen entre sí: la de Google para
+TypeScript prohíbe `export default` y los campos `#private`, y Next.js exige `export default` en sus páginas.
+PEP 8 admite `mixedCase` donde ya domina y dice que la consistencia dentro de un proyecto (y aún más dentro
+de un módulo) importa más que la guía. Un arnés que impusiera una sola escuela marcaría en masa código
+correcto. Por eso cada regla está en uno de tres niveles:
+- **Contrato (`error`, bloquea)**: defectos objetivos en los que coinciden PEP 8, el manual de TypeScript y
+  la guía de Google: presupuestos de tamaño y complejidad, capturas vacías, `eval`, `any`, `debugger`.
+- **Aviso (`warning`)**: casi siempre un error, aunque a veces es deliberado: `== None`, `==` laxo (salvo
+  `== null`, que las guías admiten para `null` y `undefined` a la vez), `var`, funciones públicas sin anotar.
+- **Sugerencia (`suggestion`, nunca bloquea)**: cuestiones de estilo con varias escuelas válidas. No imponen
+  una convención: piden la del propio código. `ARGUS-STYLE-001` deduce la convención de nombres de cada
+  archivo (al menos 5 funciones y un 80 % en `snake_case` o `camelCase`) y señala las que se desvían, que
+  es justo el error típico de un agente: escribir en su estilo por defecto y no en el del proyecto. Una sola
+  palabra, `PascalCase` (clases, componentes de React) y nombres de framework (`setUp`) no cuentan.
+
+Cada equipo ajusta los niveles en `.argus.toml`: `[rules]` apaga, suaviza o endurece cualquier regla por su
+ID (un ID inexistente es un error de configuración), y `[style]` fija la convención de nombres del proyecto
+(`snake_case`, `camelCase`, `auto` u `off`), que entonces se exige en todos los archivos, también en los
+nuevos.
+
+En `--format agent` las sugerencias llegan con `severity: "suggestion"` y se cuentan en
+`summary.suggestions`; `warnings` cuenta solo los avisos. Validación:
+- Stdlib de CPython (3544 archivos): `== None` en 27 archivos, casi todos paquetes de terceros. `lambda`
+  asignada en 56. STYLE-001 en 73 (un 2 %), todos mezclas reales, como los alias `camelCase` de
+  `threading` o de `bs4`.
+- GO-Asset: ningún hallazgo nuevo; es TypeScript estricto y consistente.
+
+## D16 — Sugerencias que traen la solución escrita: bucles acumuladores
+Una sugerencia que solo dice "esto se podría escribir mejor" obliga al agente a releer el código y a
+decidir, que es lo que Argus quiere ahorrarle. `ARGUS-STYLE-002` reconoce el bucle que solo llena una
+colección recién creada y entrega la expresión equivalente ya escrita, con las líneas que sustituye:
+`r = [x * 2 for x in xs]` (también conjuntos, diccionarios y la copia `list(xs)`) o
+`const r = xs.filter((x) => x).map((x) => f(x));`. El agente la aplica en un turno.
+
+Solo se sugiere cuando la reescritura conserva el comportamiento:
+- La colección se crea vacía (`[]`, `{}`, `set()`, `list()`, `dict()`) justo antes del bucle, y el cuerpo
+  es una única inserción (`append`, `add`, `d[k] = v`, `push` de un solo argumento), como mucho bajo un
+  `if` sin `else`. No puede haber `continue` ni más sentencias, ni un `for ... else`.
+- Nada de lo que se evalúa nombra la colección (`r.append(len(r))`) ni usa `await` o `yield`.
+- Python: la variable del bucle no se lee después (sobrevive a un `for` pero no a una comprensión), ni la
+  condición ni el valor usan `locals()`, `vars()` o `super()`, y el bucle no está en el cuerpo de una
+  clase, donde una comprensión no ve los atributos.
+- El resultado cabe en una línea: 88 caracteres en Python, 100 en JS/TS. Si no cabe, el bucle es más claro.
+
+Si el bucle tenía comentarios, la instrucción pide conservarlos. En JS/TS, si no se sabe que el origen es un
+array (`Object.entries(...)`, `Array.from(...)`), avisa de que `map` y `filter` necesitan uno. Validación:
+- Stdlib de CPython: 128 sugerencias en 84 archivos; todas las revisadas son reescrituras correctas.
+- GO-Asset: ninguna, y es correcto. Sus bucles con `[]` previo usan `continue`, varias sentencias o
+  `await`, o leen la colección.
+
+## D17 — CST plano en arena y parsers con recuperación de errores
+El árbol (`src/cst/`) es una arena plana: los nodos en un `Vec`, los hijos de cada nodo en un tramo
+contiguo de otro `Vec` y los tokens del lexer con su posición absoluta. Se recorre con cursores prestados
+(`Node<'a>`), sin `Rc`/`RefCell` (regla 2). Del diseño red-green de la especificación se queda la parte
+"green" inmutable; no se comparten subárboles porque aún no hay reparseo incremental, y los nodos no guardan
+a su padre: quien necesita subir lleva la pila del recorrido.
+
+- **Sin pérdida por construcción.** El parser solo ve los tokens significativos y emite eventos
+  (`Start`/`Token`/`Finish`); el builder recoloca la trivia y cuelga de la raíz todo lo que el parser no
+  consumió. El round-trip no depende de que la gramática sea correcta.
+- **Siempre termina.** Cada lectura de token gasta un paso de un presupuesto de 64 por token; agotado, el
+  parser ve el final del archivo. Las listas tienen guardas de progreso.
+- **Recuperación.** Lo que no se reconoce queda en un nodo `Error` con su `ParseError`. Antes de parsear se
+  emparejan `()`, `[]` y `{}`: un error dentro de un grupo salta hasta su cierre y no contamina lo de fuera.
+- **Python** cubre la gramática de 3.14 (`match`, `type`, `except*`, `with` entre paréntesis, ...).
+- **JS/TS** cubre ES2024, TypeScript 5 y JSX. Las palabras contextuales (`let`, `async`, `of`, `type`,
+  `declare`, ...) se deciden por posición, y los `>` sueltos del lexer se recomponen en `>>`, `>=` o `>>>=`
+  cuando no hay trivia entre ellos. Las flechas se reconocen por el token tras el paréntesis de cierre o, con
+  tipos (`(a: T): R =>`, `<T>(a) =>`), con un intento especulativo que se deshace si no sigue `=>`. Lo mismo
+  vale para `f<T>(x)` y `f<T>`, con la regla de TypeScript sobre lo que puede seguir a los argumentos de tipo.
+  Los patrones de desestructuración se parsean como literales de objeto y de array, que los cubren.
+- **No valida semántica.** Acepta algo de código inválido (`await` fuera de `async`, patrones imposibles):
+  Argus audita código que ya compila, y esas comprobaciones son de la Fase 2.
+
+Las reglas siguen leyendo el esqueleto (D13). Pasan al CST en la Fase 2, cuando la arena semántica
+(ámbitos y símbolos) se construya sobre él. Validación (debug, `tests/cst_tests.rs`, todo con round-trip byte a byte):
+
+| Corpus | Archivos | Tamaño | Con errores |
+|---|---|---|---|
+| Stdlib de CPython 3.14 | 3554 | 52 MB | 1: `olefile2.py`, que es Python 2 |
+| GO-Asset sin `node_modules` | 689 | 21 MB | 0 |
+| `node_modules` de GO-Asset | 26398 | 323 MB | 2: `syntax-error*.mjs` de pino y thread-stream, inválidos a propósito |

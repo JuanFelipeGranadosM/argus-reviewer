@@ -19,10 +19,7 @@ pub(super) fn check(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
             "Dividir el archivo en módulos cohesivos de como máximo {max} líneas y actualizar los imports que lo referencian."
         ),
     );
-    out.push(FILE_TOO_LONG.diagnostic(
-        ctx.file,
-        (1, lines),
-        format!("El archivo tiene {lines} líneas; el presupuesto es {max}."),
-        Some(action),
-    ));
+    let message = format!("El archivo tiene {lines} líneas; el presupuesto es {max}.");
+    let diagnostic = FILE_TOO_LONG.diagnostic(ctx.file, (1, lines), message, Some(action));
+    out.push(diagnostic.with_metric(lines));
 }

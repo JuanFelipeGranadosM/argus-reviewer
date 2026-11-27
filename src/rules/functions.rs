@@ -93,7 +93,8 @@ fn length(
     let message = format!(
         "{who} tiene {count} líneas propias, sin contar funciones anidadas; el presupuesto es {max}."
     );
-    out.push(FUNCTION_TOO_LONG.diagnostic(ctx.file, lines, message, Some(action)));
+    let diagnostic = FUNCTION_TOO_LONG.diagnostic(ctx.file, lines, message, Some(action));
+    out.push(diagnostic.with_metric(count));
 }
 
 fn parameters(
@@ -115,7 +116,8 @@ fn parameters(
     .with_symbol(function.name.clone());
     let message = format!("{who} recibe {count} parámetros; el máximo es {max}.");
     let header = (lines.0, lines.0);
-    out.push(TOO_MANY_PARAMETERS.diagnostic(ctx.file, header, message, Some(action)));
+    let diagnostic = TOO_MANY_PARAMETERS.diagnostic(ctx.file, header, message, Some(action));
+    out.push(diagnostic.with_metric(count));
 }
 
 fn complexity(
@@ -138,5 +140,6 @@ fn complexity(
     )
     .with_symbol(function.name.clone());
     let message = format!("{who} tiene complejidad ciclomática {value}; el máximo es {max}.");
-    out.push(HIGH_COMPLEXITY.diagnostic(ctx.file, lines, message, Some(action)));
+    let diagnostic = HIGH_COMPLEXITY.diagnostic(ctx.file, lines, message, Some(action));
+    out.push(diagnostic.with_metric(value));
 }

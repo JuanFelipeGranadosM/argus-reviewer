@@ -4,6 +4,8 @@
 //! Es la primera capa del parser (D13). Las reglas por función no esperan a la gramática entera, y el
 //! reconocimiento es conservador: ante una forma que no entiende, no inventa una función.
 
+mod accumulators;
+mod idioms;
 mod javascript;
 mod js_facts;
 mod python;
@@ -69,6 +71,47 @@ pub struct Catch {
     pub silent: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum IdiomKind {
+    /// Python: `== None` o `!= None` en lugar de `is None`.
+    NoneEquality,
+    /// Python: `nombre = lambda ...` en lugar de `def`.
+    LambdaAssignment,
+    /// JS/TS: `==` o `!=` que no compara con `null`/`undefined`.
+    LooseEquality,
+    /// JS/TS: `var` (fuera de `declare var`).
+    VarDeclaration,
+    /// JS/TS: sentencia `debugger`.
+    Debugger,
+}
+
+/// Una construcción desaconsejada por las guías del lenguaje, con el rango de su token.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Idiom {
+    pub kind: IdiomKind,
+    pub span: TextRange,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Collection {
+    List,
+    Set,
+    Dict,
+}
+
+/// Una colección que se crea vacía y se llena con un bucle que solo inserta, con la expresión
+/// funcional equivalente (comprensión, `map`/`filter`) lista para sustituirlo.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Accumulator {
+    pub name: String,
+    /// Desde la declaración de la colección hasta el final del bucle.
+    pub span: TextRange,
+    pub replacement: String,
+    pub collection: Collection,
+    /// Condición que el agente debe comprobar antes de aplicar la sustitución.
+    pub caveat: Option<String>,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Outline {
     /// Ordenadas por inicio, y a igual inicio la más externa primero: las funciones anidadas en una
@@ -79,6 +122,8 @@ pub struct Outline {
     pub dynamic_evals: Vec<TextRange>,
     /// Usos de `any` en posición de tipo (solo TypeScript).
     pub explicit_any: Vec<TextRange>,
+    pub idioms: Vec<Idiom>,
+    pub accumulators: Vec<Accumulator>,
 }
 
 pub fn outline(source: &str, lexed: &Lexed, language: Language) -> Outline {

@@ -1,5 +1,7 @@
 //! Pipeline de `argus scan`: recorrer, lexear, aplicar reglas y producir un [`Report`] determinista.
 
+mod baseline;
+mod incremental;
 mod walk;
 
 use std::fs;
@@ -7,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 use crate::arena::Language;
 use crate::config::Config;
+use crate::git::GitError;
 use crate::lexer::lex_file;
 use crate::reporters::{Diagnostic, Report};
 use crate::rules::{self, FileContext, UNREADABLE_FILE};
@@ -30,7 +33,11 @@ pub enum ScanError {
         path: PathBuf,
         source: std::io::Error,
     },
+    #[error("{0}")]
+    Git(#[from] GitError),
 }
+
+pub use incremental::diff;
 
 pub fn scan(root: &Path, config: &Config) -> Result<Report, ScanError> {
     if !root.exists() {
@@ -71,18 +78,28 @@ fn language_enabled(config: &Config, language: Language) -> bool {
 }
 
 fn analyze(path: &Path, display: &str, language: Language, config: &Config) -> Outcome {
-    let source = match fs::read_to_string(path) {
-        Ok(source) => source,
-        Err(err) => return Outcome::Analyzed(vec![unreadable(display, &err.to_string())]),
-    };
-    if looks_generated(&source) {
+    match fs::read_to_string(path) {
+        Ok(source) => analyze_source(&source, path, display, language, config),
+        Err(err) => Outcome::Analyzed(unreadable(display, &err.to_string(), config)),
+    }
+}
+
+/// Analiza `source` como si fuera el contenido de `path` (el modo incremental pasa la versión base).
+fn analyze_source(
+    source: &str,
+    path: &Path,
+    display: &str,
+    language: Language,
+    config: &Config,
+) -> Outcome {
+    if looks_generated(source) {
         return Outcome::Generated;
     }
-    let lexed = match lex_file(&source, language, path) {
+    let lexed = match lex_file(source, language, path) {
         Ok(lexed) => lexed,
-        Err(err) => return Outcome::Analyzed(vec![unreadable(display, &err.to_string())]),
+        Err(err) => return Outcome::Analyzed(unreadable(display, &err.to_string(), config)),
     };
-    let ctx = FileContext::new(display, &source, &lexed, language, config);
+    let ctx = FileContext::new(display, source, &lexed, language, config);
     Outcome::Analyzed(rules::check(&ctx))
 }
 
@@ -91,11 +108,13 @@ fn looks_generated(source: &str) -> bool {
     source.len() >= GENERATED_MIN_BYTES && source.len() / lines > GENERATED_BYTES_PER_LINE
 }
 
-fn unreadable(display: &str, reason: &str) -> Diagnostic {
-    UNREADABLE_FILE.diagnostic(
+fn unreadable(display: &str, reason: &str, config: &Config) -> Vec<Diagnostic> {
+    let mut diagnostics = vec![UNREADABLE_FILE.diagnostic(
         display,
         (1, 1),
         format!("No se analizó el archivo: {reason}."),
         None,
-    )
+    )];
+    rules::apply_levels(config, &mut diagnostics);
+    diagnostics
 }
