@@ -3,8 +3,10 @@
 
 pub mod arena;
 pub mod config;
+pub mod cst;
 pub mod git;
 pub mod lexer;
+pub mod parser;
 pub mod reporters;
 pub mod rules;
 pub mod scan;

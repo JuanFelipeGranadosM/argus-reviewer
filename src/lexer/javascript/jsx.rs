@@ -9,7 +9,7 @@ use crate::lexer::LexErrorKind;
 use crate::syntax::SyntaxKind;
 
 /// En `.tsx`, `<T,>`, `<T extends U>`, `<T = U>` y `<T>(` son parámetros de tipo, no JSX.
-pub(super) fn looks_like_type_parameters(after_lt: &str) -> bool {
+pub(crate) fn looks_like_type_parameters(after_lt: &str) -> bool {
     let name_len = after_lt
         .find(|c: char| !is_ident_continue(c))
         .unwrap_or(after_lt.len());

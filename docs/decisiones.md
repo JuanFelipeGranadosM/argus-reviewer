@@ -168,3 +168,36 @@ array (`Object.entries(...)`, `Array.from(...)`), avisa de que `map` y `filter` 
 - Stdlib de CPython: 128 sugerencias en 84 archivos; todas las revisadas son reescrituras correctas.
 - GO-Asset: ninguna, y es correcto. Sus bucles con `[]` previo usan `continue`, varias sentencias o
   `await`, o leen la colección.
+
+## D17 — CST plano en arena y parsers con recuperación de errores
+El árbol (`src/cst/`) es una arena plana: los nodos en un `Vec`, los hijos de cada nodo en un tramo
+contiguo de otro `Vec` y los tokens del lexer con su posición absoluta. Se recorre con cursores prestados
+(`Node<'a>`), sin `Rc`/`RefCell` (regla 2). Del diseño red-green de la especificación se queda la parte
+"green" inmutable; no se comparten subárboles porque aún no hay reparseo incremental, y los nodos no guardan
+a su padre: quien necesita subir lleva la pila del recorrido.
+
+- **Sin pérdida por construcción.** El parser solo ve los tokens significativos y emite eventos
+  (`Start`/`Token`/`Finish`); el builder recoloca la trivia y cuelga de la raíz todo lo que el parser no
+  consumió. El round-trip no depende de que la gramática sea correcta.
+- **Siempre termina.** Cada lectura de token gasta un paso de un presupuesto de 64 por token; agotado, el
+  parser ve el final del archivo. Las listas tienen guardas de progreso.
+- **Recuperación.** Lo que no se reconoce queda en un nodo `Error` con su `ParseError`. Antes de parsear se
+  emparejan `()`, `[]` y `{}`: un error dentro de un grupo salta hasta su cierre y no contamina lo de fuera.
+- **Python** cubre la gramática de 3.14 (`match`, `type`, `except*`, `with` entre paréntesis, ...).
+- **JS/TS** cubre ES2024, TypeScript 5 y JSX. Las palabras contextuales (`let`, `async`, `of`, `type`,
+  `declare`, ...) se deciden por posición, y los `>` sueltos del lexer se recomponen en `>>`, `>=` o `>>>=`
+  cuando no hay trivia entre ellos. Las flechas se reconocen por el token tras el paréntesis de cierre o, con
+  tipos (`(a: T): R =>`, `<T>(a) =>`), con un intento especulativo que se deshace si no sigue `=>`. Lo mismo
+  vale para `f<T>(x)` y `f<T>`, con la regla de TypeScript sobre lo que puede seguir a los argumentos de tipo.
+  Los patrones de desestructuración se parsean como literales de objeto y de array, que los cubren.
+- **No valida semántica.** Acepta algo de código inválido (`await` fuera de `async`, patrones imposibles):
+  Argus audita código que ya compila, y esas comprobaciones son de la Fase 2.
+
+Las reglas siguen leyendo el esqueleto (D13). Pasan al CST en la Fase 2, cuando la arena semántica
+(ámbitos y símbolos) se construya sobre él. Validación (debug, `tests/cst_tests.rs`, todo con round-trip byte a byte):
+
+| Corpus | Archivos | Tamaño | Con errores |
+|---|---|---|---|
+| Stdlib de CPython 3.14 | 3554 | 52 MB | 1: `olefile2.py`, que es Python 2 |
+| GO-Asset sin `node_modules` | 689 | 21 MB | 0 |
+| `node_modules` de GO-Asset | 26398 | 323 MB | 2: `syntax-error*.mjs` de pino y thread-stream, inválidos a propósito |

@@ -46,6 +46,11 @@ de análisis estático, inferencia estructural de tipos y refactorización autom
   regex, plantillas y JsxText con el parser de TypeScript. Debe dar 0 discrepancias. Hay un `typescript.js` en
   `Documents/GO-Asset/node_modules/typescript/lib` (solo lectura: GO-Asset no se modifica).
 
+- CST: `ARGUS_CST_DIR=<carpeta> cargo test --test cst_tests corpus -- --ignored --nocapture` parsea cada
+  `.py`/`.js`/`.ts`/... de la carpeta, comprueba el round-trip y agrupa los errores de parseo (deben ser solo
+  código inválido). `ARGUS_CST_NODE_MODULES=1` entra también en `node_modules`; `ARGUS_CST_VERBOSE=1` lista
+  cada archivo con errores.
+
 ## Orden de Ejecución
 Roadmap de 6 fases de la especificación, con los ajustes de `docs/decisiones.md`.
 Fase actual: **Fase 1 (Base, ProjectArena, CST y Lexer/Parser con pruebas de round-trip)**.
@@ -53,8 +58,9 @@ No avances a la Fase 2 hasta cumplir su criterio de aceptación.
 
 Hecho: lexers de Python y JS/TS (D11), esqueleto estructural (D13), `argus scan` con reglas de presupuestos,
 tipado y seguridad, `argus diff` incremental frente a git (D14) y niveles contrato/aviso/sugerencia
-ajustables por proyecto (D15). Pendiente en la Fase 1: CST red-green y parsers de Python y JS/TS con recuperación de
-errores, que sustituirán al esqueleto por dentro sin cambiar las reglas.
+ajustables por proyecto (D15), CST en arena y parsers de Python y JS/TS con recuperación de errores (D17).
+Con eso se cumple el criterio de D4. Las reglas aún leen el esqueleto: pasan al CST en la Fase 2, sin cambiar
+su salida.
 
 ## Contrato de `argus scan`
 - El JSON de `--format agent` (`src/reporters/mod.rs`) es público: solo se añaden campos. Los IDs de regla
