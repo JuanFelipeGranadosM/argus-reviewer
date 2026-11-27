@@ -69,6 +69,23 @@ pub(in crate::structure) fn find(sig: &Sig, i: usize) -> Option<Accumulator> {
     let (target, value) = (piece(sig, target)?, piece(sig, value)?);
     let transforms = cond.is_some() || value != target;
     let replacement = chain(head, target, iter, cond, value);
+    let caveat = caveat(sig, iter, transforms, (i, last));
+    (replacement.chars().count() <= MAX_LINE).then(|| Accumulator {
+        name: name.to_owned(),
+        span: sig.span(i, last),
+        replacement,
+        collection: Collection::List,
+        caveat,
+    })
+}
+
+/// Advertencias de la sugerencia: `map`/`filter` piden un array y los comentarios deben conservarse.
+fn caveat(
+    sig: &Sig,
+    iter: &str,
+    transforms: bool,
+    span: (usize, usize),
+) -> Option<std::string::String> {
     let known_array = ARRAY_SOURCES.iter().any(|s| iter.starts_with(s));
     let array_note = (transforms && !known_array).then(|| {
         format!(
@@ -77,16 +94,9 @@ pub(in crate::structure) fn find(sig: &Sig, i: usize) -> Option<Accumulator> {
     });
     let notes: Vec<std::string::String> = array_note
         .into_iter()
-        .chain(comments_note(sig, (i, last), &["//", "/*"]).map(str::to_owned))
+        .chain(comments_note(sig, span, &["//", "/*"]).map(str::to_owned))
         .collect();
-    let caveat = (!notes.is_empty()).then(|| notes.join(" "));
-    (replacement.chars().count() <= MAX_LINE).then(|| Accumulator {
-        name: name.to_owned(),
-        span: sig.span(i, last),
-        replacement,
-        collection: Collection::List,
-        caveat,
-    })
+    (!notes.is_empty()).then(|| notes.join(" "))
 }
 
 /// Cuerpo de una sola sentencia en `at` (con llaves o sin ellas): su primer token, el índice que
